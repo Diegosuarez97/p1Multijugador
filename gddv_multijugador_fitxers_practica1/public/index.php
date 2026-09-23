@@ -14,6 +14,7 @@ $configuration = array(
     '{LOGIN_LOGOUT_URL}'  => '/?page=login',
     '{METHOD}'            => 'GET', // es veuen els paràmetres a l'URL i a la consola (???)
     '{REGISTER_URL}'      => '/?page=register',
+    '{DELETE_ACCOUNT_URL}'=> '/?page=delete',
     '{SITE_NAME}'         => 'La meva pàgina'
 );
 // processament de paràmetres
@@ -29,6 +30,26 @@ if (isset($parameters['page'])) {
     } else if ($parameters['page'] == 'logout') {
         $_SESSION = array(); // oblida les dades carregades en aquesta petició
         session_destroy();  // elimina la sessió desada al servidor
+    } else if ($parameters['page'] == 'delete') {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete'])) {
+            if (isset($_SESSION['user_name'])) {
+                $db = new PDO($db_connection);
+                $sql = 'DELETE FROM users WHERE user_name = :user_name';
+                $query = $db->prepare($sql);
+                $query->bindValue(':user_name', $_SESSION['user_name']);
+                $query->execute();
+
+                $_SESSION = array();
+                session_destroy();
+                $configuration['{FEEDBACK}'] = 'El compte s\'ha eliminat correctament';
+            }
+            $template = 'home';
+        } else if (isset($_SESSION['user_name'])) {
+            $template = $parameters['page'];
+            $configuration['{METHOD}'] = 'POST';
+        } else {
+            $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per eliminar el compte';
+        }
     }
 } else if (isset($parameters['register'])) {
     $db = new PDO($db_connection);
