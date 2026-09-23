@@ -7,7 +7,7 @@ session_start();
 
 // valors per defecte
 $template = 'home';
-$db_connection = 'sqlite:..\private\users.db';
+$db_connection = 'sqlite:' . dirname(__DIR__) . DIRECTORY_SEPARATOR . 'private' . DIRECTORY_SEPARATOR . 'users.db';
 $configuration = array(
     '{FEEDBACK}'          => '',
     '{LOGIN_LOGOUT_TEXT}' => 'Identificar-me',
@@ -72,6 +72,8 @@ if ($template == 'home' && isset($_SESSION['user_name'])) {
     }
 }
 // processament amb la plantilla i generació de la pàgina
-$html = file_get_contents('plantilla_' . $template . '.html', true);
+$template_path = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'private' . DIRECTORY_SEPARATOR
+    . 'plantilla_' . $template . '.html';
+$html = file_get_contents($template_path, true);
 $html = str_replace(array_keys($configuration), array_values($configuration), $html);
 echo $html;
