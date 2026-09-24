@@ -30,7 +30,15 @@
                 <label for="register_username">Nom d'usuari</label>
                 <input id="register_username" type="text" name="user_name" value="{REGISTER_USERNAME}" />
                 <label for="register_password">Contrasenya</label>
-                <input id="register_password" type="password" name="user_password" />
+                <div class="password-guidance" id="password-guidance">
+                    <strong>Consell:</strong> tria una frase llarga que puguis recordar fàcilment.
+                    Calen com a mínim 12 caràcters. Pots fer servir espais, símbols i emojis.
+                </div>
+                <input id="register_password" type="password" name="user_password"
+                    aria-describedby="password-guidance password-count" />
+                <label for="password-progress">Longitud de la contrasenya</label>
+                <progress id="password-progress" max="12" value="0">0</progress>
+                <p id="password-count" aria-live="polite">0 caràcters (mínim 12)</p>
                 <input type="submit" name="register" value="Crear compte" />
             </form>
         </section>
