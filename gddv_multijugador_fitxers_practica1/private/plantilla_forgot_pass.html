@@ -5,32 +5,36 @@
     <meta charset="utf-8">
     <title>{SITE_NAME} :: Recuperar contrasenya</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" href="/favicon.png">
+    <meta name="author" content="Antonio Bueno (UdG)">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="mvp.css">
     <link rel="stylesheet" href="el_meu.css">
+    <script defer src="el_meu.js"></script>
 </head>
 
-<body>
-    <main>
-        <header>
-            <h1><a href="/">{SITE_NAME}</a></h1>
-            <div>{FEEDBACK}</div>
+<body class="auth-page forgot-page">
+    <main class="auth-shell forgot-shell">
+        <header class="auth-heading">
+            <h1><span class="auth-title-outline" aria-hidden="true">{SITE_NAME}</span><a href="/">{SITE_NAME}</a></h1>
+            <div class="auth-feedback">{FEEDBACK}</div>
         </header>
 
-        <section>
-            <form method="POST" action="/">
+        <section class="auth-form-section">
+            <form id="forgot-form" class="auth-card forgot-card" method="POST" action="/">
+                <img class="auth-illustration forgot-illustration" src="/images/login.png" alt="" aria-hidden="true">
                 <header>
                     <h2>Recuperar contrasenya</h2>
                 </header>
 
                 <label for="forgot_email">Correu electrònic</label>
                 <input id="forgot_email" type="email" name="user_email" required />
-
-                <input type="submit" name="forgot_password" value="Enviar enllaç de recuperació" />
             </form>
+            <button class="animated-submit forgot-submit" type="submit" name="forgot_password" value="1" form="forgot-form">
+                <span class="button-label">Enviar enllaç</span>
+            </button>
         </section>
 
-        <section>
+        <section class="auth-switch">
             <a href="/?page=login">Tornar a l'inici de sessió</a>
         </section>
     </main>

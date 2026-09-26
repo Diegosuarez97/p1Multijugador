@@ -6,21 +6,22 @@
     <title>{SITE_NAME} :: Nova contrasenya</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="author" content="Antonio Bueno (UdG)">
-    <link rel="icon" href="/favicon.png">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="mvp.css">
     <link rel="stylesheet" href="el_meu.css">
     <script defer src="el_meu.js"></script>
 </head>
 
-<body>
-    <main>
-        <header>
-            <h1><a href="/">{SITE_NAME}</a></h1>
-            <div>{FEEDBACK}</div>
+<body class="auth-page reset-page">
+    <main class="auth-shell reset-shell">
+        <header class="auth-heading">
+            <h1><span class="auth-title-outline" aria-hidden="true">{SITE_NAME}</span><a href="/">{SITE_NAME}</a></h1>
+            <div class="auth-feedback">{FEEDBACK}</div>
         </header>
 
-        <section>
-            <form method="POST" action="/">
+        <section class="auth-form-section">
+            <form id="reset-form" class="auth-card reset-card" method="POST" action="/">
+                <img class="auth-illustration reset-illustration" src="/images/login.png" alt="" aria-hidden="true">
                 <header>
                     <h2>Crear una nova contrasenya</h2>
                 </header>
@@ -32,12 +33,13 @@
 
                 <label for="confirm_new_password">Repeteix la nova contrasenya</label>
                 <input id="confirm_new_password" type="password" name="confirm_new_password" required />
-
-                <input type="submit" name="reset_password" value="Canviar contrasenya" />
             </form>
+            <button class="animated-submit reset-submit" type="submit" name="reset_password" value="1" form="reset-form">
+                <span class="button-label">Canviar contrasenya</span>
+            </button>
         </section>
 
-        <section>
+        <section class="auth-switch">
             <a href="/?page=login">Tornar a l'inici de sessio</a>
         </section>
     </main>
