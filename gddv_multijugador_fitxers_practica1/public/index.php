@@ -14,11 +14,15 @@ $configuration = array(
     '{LOGIN_LOGOUT_URL}'  => '/?page=login',
     '{METHOD}'            => 'GET', // es veuen els paràmetres a l'URL i a la consola (???)
     '{REGISTER_URL}'      => '/?page=register',
-    '{DELETE_ACCOUNT_URL}'=> '/?page=delete',
     '{SITE_NAME}'         => 'La meva pàgina'
 );
 // processament de paràmetres
 $parameters = $_GET;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $parameters = $_POST;
+}
+
 if (isset($parameters['page'])) {
     if ($parameters['page'] == 'register') {
         $template = 'register';
@@ -35,6 +39,26 @@ if (isset($parameters['page'])) {
             $template = 'delete';
         } else {
             $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per eliminar el compte';
+        }
+    } else if ($parameters['page'] == 'edit') {
+        if (isset($_SESSION['user_name'])) {
+            $db = new PDO($db_connection);
+            $sql = 'SELECT * FROM users WHERE user_name = :user_name';
+            $query = $db->prepare($sql);
+            $query->bindValue(':user_name', $_SESSION['user_name']);
+            $query->execute();
+            $result_row = $query->fetchObject();
+            if ($result_row) {
+                $template = 'edit';
+                $configuration['{DATA_USERNAME}'] = $result_row->user_name;
+                $configuration['{DATA_EMAIL}'] = '$result_row->email';
+                $configuration['{DATA_NICKNAME}'] = $result_row->nickname;
+            } else {
+                $configuration['{FEEDBACK}'] = "<mark>ERROR: No s'ha pogut obtenir les dades del perfil</mark>";
+            }
+
+        } else {
+            $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per editar el perfil';
         }
     }
 } else if (isset($parameters['register'])) {
@@ -85,6 +109,22 @@ if (isset($parameters['page'])) {
         }
     } else {
         $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per eliminar el compte';
+    }
+} else if (isset($parameters['edit'])) {
+    var_dump($_POST);
+    if (isset($_SESSION['user_name'])) {
+        $db = new PDO($db_connection);
+        $sql = 'UPDATE users SET nickname = :new_nickname WHERE user_name = :user_name';
+        $query = $db->prepare($sql);
+        $query->bindValue(':new_nickname', $parameters['data_nickname']);
+        $query->bindValue(':user_name', $_SESSION['user_name']);
+        if ($query->execute()) {
+            $configuration['{FEEDBACK}'] = 'El perfil s\'ha actualitzat correctament';
+        } else {
+            $configuration['{FEEDBACK}'] = '<mark>ERROR: No s\'ha pogut actualitzar el perfil</mark>';
+        }
+    } else {
+        $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per editar el perfil';
     }
 }
 
