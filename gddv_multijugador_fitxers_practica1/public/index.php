@@ -96,10 +96,13 @@ if (isset($post_parameters['register'])) {
         } else {
             // 4. Desa només el hash de la contrasenya.
             $password_hash = password_hash($post_parameters['user_password'], PASSWORD_DEFAULT);
-            $sql = 'INSERT INTO users (user_name, user_password) VALUES (:user_name, :user_password)';
+            $sql = 'INSERT INTO users (user_name, user_email, birth_date, user_password)
+                    VALUES (:user_name, :user_email, :birth_date, :user_password)';
             $query = $db->prepare($sql);
             $query->bindValue(':user_name', $post_parameters['user_name']);
             $query->bindValue(':user_password', $password_hash);
+            $query->bindValue(':user_email', $post_parameters['user_email']);
+            $query->bindValue(':birth_date', $birth_date_text);
 
             if ($query->execute()) {
                 // Inicia la sessió del compte nou i regenera l'identificador.
