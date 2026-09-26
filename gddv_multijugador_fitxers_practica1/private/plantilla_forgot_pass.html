@@ -1,10 +1,39 @@
-<form method="POST" action="/">
-    <header>
-        <h2>Recuperar contrasenya</h2>
-    </header>
+<!DOCTYPE html>
+<html lang="ca" color-mode="user">
 
-    <label for="forgot_username">Nom d'usuari</label>
-    <input id="forgot_username" type="text" name="user_name" />
+<head>
+    <meta charset="utf-8">
+    <title>{SITE_NAME} :: Recuperar contrasenya</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="/favicon.png">
+    <link rel="stylesheet" href="mvp.css">
+    <link rel="stylesheet" href="el_meu.css">
+</head>
 
-    <input type="submit" name="forgot_password" value="Enviar enllaç de recuperació" />
-</form>
+<body>
+    <main>
+        <header>
+            <h1><a href="/">{SITE_NAME}</a></h1>
+            <div>{FEEDBACK}</div>
+        </header>
+
+        <section>
+            <form method="POST" action="/">
+                <header>
+                    <h2>Recuperar contrasenya</h2>
+                </header>
+
+                <label for="forgot_email">Correu electrònic</label>
+                <input id="forgot_email" type="email" name="user_email" required />
+
+                <input type="submit" name="forgot_password" value="Enviar enllaç de recuperació" />
+            </form>
+        </section>
+
+        <section>
+            <a href="/?page=login">Tornar a l'inici de sessió</a>
+        </section>
+    </main>
+</body>
+
+</html>

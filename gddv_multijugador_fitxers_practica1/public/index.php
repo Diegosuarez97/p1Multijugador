@@ -5,16 +5,20 @@
 // de la sessió desades al servidor.
 session_start();
 
+require_once __DIR__ . '/../vendor/autoload.php';
+$smtp_config = require __DIR__ . '/../private/smtp_config.php';
+
 // valors per defecte
 $template = 'home';
 $db_connection = 'sqlite:..\private\users.db';
 $configuration = array(
-    '{FEEDBACK}'          => '',
+    '{FEEDBACK}' => '',
     '{LOGIN_LOGOUT_TEXT}' => 'Identificar-me',
-    '{LOGIN_LOGOUT_URL}'  => '/?page=login',
-    '{METHOD}'            => 'POST',
-    '{REGISTER_URL}'      => '/?page=register',
-    '{SITE_NAME}'         => 'La meva pàgina'
+    '{LOGIN_LOGOUT_URL}' => '/?page=login',
+    '{METHOD}' => 'POST',
+    '{REGISTER_URL}' => '/?page=register',
+    '{RESET_TOKEN}' => '',
+    '{SITE_NAME}' => 'La meva pàgina'
 );
 
 // Recuperar missatges temporals de la sessió (després d'una redirecció PRG)
@@ -149,24 +153,24 @@ if (isset($post_parameters['register'])) {
         $configuration['{FEEDBACK}'] = '<mark>ERROR: Usuari desconegut o contrasenya incorrecta</mark>';
     }
 } else if (isset($post_parameters['forgot_password'])) {
-    $user_name = trim($post_parameters['user_name'] ?? '');
+    $user_email = trim($post_parameters['user_email'] ?? '');
 
-    if ($user_name === '') {
+    if (!filter_var($user_email, FILTER_VALIDATE_EMAIL)) {
         $template = 'forgot_pass';
-        $configuration['{FEEDBACK}'] = '<mark>ERROR: Escriu el nom d\'usuari</mark>';
+        $configuration['{FEEDBACK}'] = '<mark>ERROR: Escriu un correu electrònic vàlid</mark>';
     } else {
         $db = new PDO($db_connection);
 
-        $sql = 'SELECT user_id FROM users WHERE user_name = :user_name';
+        $sql = 'SELECT user_id, user_email FROM users WHERE user_email = :user_email';
         $query = $db->prepare($sql);
-        $query->bindValue(':user_name', $user_name);
+        $query->bindValue(':user_email', $user_email);
         $query->execute();
         $user = $query->fetchObject();
 
         if ($user) {
             $token = bin2hex(random_bytes(32));
             $token_hash = hash('sha256', $token);
-            $expires_at = time() + 3600;
+            $expires_at = time() + 900; // 15 minuts
 
             $sql = 'INSERT INTO password_resets (user_id, token_hash, expires_at)
                     VALUES (:user_id, :token_hash, :expires_at)';
@@ -176,15 +180,98 @@ if (isset($post_parameters['register'])) {
             $query->bindValue(':expires_at', $expires_at);
             $query->execute();
 
-            $reset_link = '/?page=reset&token=' . urlencode($token);
+            $reset_link = 'http://localhost:8000/?page=reset&token=' . urlencode($token);
 
-            $configuration['{FEEDBACK}'] =
-                'Enllaç de recuperació: <a href="' . htmlentities($reset_link) . '">Canviar contrasenya</a>';
-        } else {
-            $configuration['{FEEDBACK}'] =
-                'Si l\'usuari existeix, s\'ha generat un enllaç de recuperació.';
+            $subject = 'Recuperació de contrasenya';
+            $message = "Fes servir aquest enllaç per crear una nova contrasenya:\n\n"
+                . $reset_link
+                . "\n\nAquest enllaç caduca en 15 minuts.";
+            $headers = 'From: no-reply@lamevapagina.local';
+
+            $mail = new PHPMailer\PHPMailer\PHPMailer(true);
+
+            try {
+                $mail->isSMTP();
+                $mail->Host = $smtp_config['host'];
+                $mail->SMTPAuth = true;
+                $mail->Username = $smtp_config['username'];
+                $mail->Password = $smtp_config['password'];
+                $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port = $smtp_config['port'];
+
+                $mail->CharSet = 'UTF-8';
+                $mail->setFrom($smtp_config['from_email'], $smtp_config['from_name']);
+                $mail->addAddress($user->user_email);
+
+                $mail->Subject = $subject;
+                $mail->Body = $message;
+
+                $mail->send();
+            } catch (Exception $e) {
+                error_log('Error enviant correu de recuperació: ' . $mail->ErrorInfo);
+            }
         }
+
+        $template = 'forgot_pass';
+        $configuration['{FEEDBACK}'] = 'Si el correu existeix, s\'ha enviat un enllaç de recuperació.';
     }
+} else if (isset($post_parameters['reset_password'])) {
+    $reset_token = $post_parameters['reset_token'] ?? '';
+    $new_password = $post_parameters['new_password'] ?? '';
+    $confirm_new_password = $post_parameters['confirm_new_password'] ?? '';
+
+    if ($reset_token === '') {
+        $template = 'forgot_pass';
+        $configuration['{FEEDBACK}'] = '<mark>ERROR: Enllaç de recuperació invàlid</mark>';
+    } else if ($new_password !== $confirm_new_password) {
+        $template = 'reset_pass';
+        $configuration['{RESET_TOKEN}'] = htmlentities($reset_token);
+        $configuration['{FEEDBACK}'] = '<mark>ERROR: Les contrasenyes no coincideixen</mark>';
+    } else if (iconv_strlen($new_password, 'UTF-8') < 12) {
+        $template = 'reset_pass';
+        $configuration['{RESET_TOKEN}'] = htmlentities($reset_token);
+        $configuration['{FEEDBACK}'] = '<mark>ERROR: La nova contrasenya ha de tenir mínim 12 caràcters</mark>';
+    } else {
+        $db = new PDO($db_connection);
+
+        $token_hash = hash('sha256', $reset_token);
+
+        $sql = 'SELECT reset_id, user_id
+                FROM password_resets
+                WHERE token_hash = :token_hash
+                  AND used_at IS NULL
+                  AND expires_at >= :now
+                ORDER BY reset_id DESC
+                LIMIT 1';
+        $query = $db->prepare($sql);
+        $query->bindValue(':token_hash', $token_hash);
+        $query->bindValue(':now', time());
+        $query->execute();
+        $reset = $query->fetchObject();
+
+        if ($reset) {
+            $password_hash = password_hash($new_password, PASSWORD_DEFAULT);
+
+            $sql = 'UPDATE users SET user_password = :user_password WHERE user_id = :user_id';
+            $query = $db->prepare($sql);
+            $query->bindValue(':user_password', $password_hash);
+            $query->bindValue(':user_id', $reset->user_id);
+            $query->execute();
+
+            $sql = 'UPDATE password_resets SET used_at = :used_at WHERE reset_id = :reset_id';
+            $query = $db->prepare($sql);
+            $query->bindValue(':used_at', time());
+            $query->bindValue(':reset_id', $reset->reset_id);
+            $query->execute();
+
+            $_SESSION['feedback'] = 'Contrasenya canviada correctament. Ja pots iniciar sessió.';
+            header('Location: /?page=login');
+            exit();
+        } else {
+            $template = 'forgot_pass';
+            $configuration['{FEEDBACK}'] = '<mark>ERROR: Enllaç incorrecte, caducat o ja utilitzat</mark>';
+        }
+    } 
 } else if (isset($parameters['page'])) {
     if ($parameters['page'] == 'register') {
         $template = 'register';
@@ -197,11 +284,15 @@ if (isset($post_parameters['register'])) {
         $configuration['{LOGIN_USERNAME}'] = '';
     } else if ($parameters['page'] == 'forgot') {
         $template = 'forgot_pass';
+    } else if ($parameters['page'] == 'reset') {
+        $template = 'reset_pass';
+        $configuration['{RESET_TOKEN}'] = htmlentities($parameters['token'] ?? '');
     } else if ($parameters['page'] == 'logout') {
         $_SESSION = array();
         session_destroy();
     }
 }
+
 // adaptem la pàgina inicial a l'usuari identificat
 if ($template == 'home' && isset($_SESSION['user_name'])) {
     $configuration['{LOGIN_LOGOUT_TEXT}'] = 'Tancar sessió';
