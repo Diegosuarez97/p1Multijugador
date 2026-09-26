@@ -31,22 +31,8 @@ if (isset($parameters['page'])) {
         $_SESSION = array(); // oblida les dades carregades en aquesta petició
         session_destroy();  // elimina la sessió desada al servidor
     } else if ($parameters['page'] == 'delete') {
-        if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete'])) {
-            if (isset($_SESSION['user_name'])) {
-                $db = new PDO($db_connection);
-                $sql = 'DELETE FROM users WHERE user_name = :user_name';
-                $query = $db->prepare($sql);
-                $query->bindValue(':user_name', $_SESSION['user_name']);
-                $query->execute();
-
-                $_SESSION = array();
-                session_destroy();
-                $configuration['{FEEDBACK}'] = 'El compte s\'ha eliminat correctament';
-            }
-            $template = 'home';
-        } else if (isset($_SESSION['user_name'])) {
-            $template = $parameters['page'];
-            $configuration['{METHOD}'] = 'POST';
+        if (isset($_SESSION['user_name'])) {
+            $template = 'delete';
         } else {
             $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per eliminar el compte';
         }
@@ -83,7 +69,25 @@ if (isset($parameters['page'])) {
     } else {
         $configuration['{FEEDBACK}'] = '<mark>ERROR: Usuari desconegut o contrasenya incorrecta</mark>';
     }
+} else if (isset($parameters['delete'])) {
+    if (isset($_SESSION['user_name'])) {
+        $db = new PDO($db_connection);
+        $sql = 'DELETE FROM users WHERE user_name = :user_name';
+        $query = $db->prepare($sql);
+        $query->bindValue(':user_name', $_SESSION['user_name']);
+        $query->execute();
+        if ($query->execute()) {
+            $_SESSION = array();
+            session_destroy();
+            $configuration['{FEEDBACK}'] = 'El compte s\'ha eliminat correctament';
+        } else {
+            $configuration['{FEEDBACK}'] = '<mark>ERROR: No s\'ha pogut eliminar el compte</mark>';
+        }
+    } else {
+        $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per eliminar el compte';
+    }
 }
+
 // adaptem la pàgina inicial a l'usuari identificat
 if ($template == 'home' && isset($_SESSION['user_name'])) {
     $configuration['{LOGIN_LOGOUT_TEXT}'] = 'Tancar sessió';
@@ -92,6 +96,7 @@ if ($template == 'home' && isset($_SESSION['user_name'])) {
         $configuration['{FEEDBACK}'] = 'Sessió iniciada com <b>' . htmlentities($_SESSION['user_name']) . '</b>';
     }
 }
+
 // processament amb la plantilla i generació de la pàgina
 $template_path = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'private' . DIRECTORY_SEPARATOR
     . 'plantilla_' . $template . '.html';
