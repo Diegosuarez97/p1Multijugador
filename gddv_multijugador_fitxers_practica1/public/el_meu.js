@@ -34,12 +34,35 @@ async function passwordEstaFiltrada(password) {
     return false;
 }
 
+function calcularEdad(fechaNacimiento) {
+    if (!fechaNacimiento) return null;
+
+    const [anio, mes, dia] = fechaNacimiento.split('-').map(Number);
+    const nacimiento = new Date(anio, mes - 1, dia);
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+
+    if (
+        hoy.getMonth() < nacimiento.getMonth() ||
+        (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate())
+    ) {
+        edad--;
+    }
+
+    return edad;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.querySelector('input[name="register"]')?.closest('form');
     if (!form) return;
 
     const minimumPasswordLength = 12;
+    const minimumAge = 16;
     const passwordInput = form.querySelector('input[name="user_password"]');
+    const confirmPasswordInput = document.getElementById('confirm_password');
+    const passwordMatchResult = document.getElementById('password-match-result');
+    const birthDateInput = document.getElementById('birth_date');
+    const ageResult = document.getElementById('age-result');
     const passwordCount = document.getElementById('password-count');
     const passwordProgress = document.getElementById('password-progress');
 
@@ -52,10 +75,49 @@ document.addEventListener('DOMContentLoaded', () => {
     passwordInput.addEventListener('input', updatePasswordLength);
     updatePasswordLength();
 
+    function updatePasswordMatch() {
+        if (confirmPasswordInput.value === '') {
+            passwordMatchResult.textContent = '';
+        } else if (passwordInput.value === confirmPasswordInput.value) {
+            passwordMatchResult.textContent = 'Les contrasenyes coincideixen.';
+        } else {
+            passwordMatchResult.textContent = 'Les contrasenyes no coincideixen.';
+        }
+    }
+
+    passwordInput.addEventListener('input', updatePasswordMatch);
+    confirmPasswordInput.addEventListener('input', updatePasswordMatch);
+
+    birthDateInput.addEventListener('change', () => {
+        const age = calcularEdad(birthDateInput.value);
+
+        if (age === null) {
+            ageResult.textContent = '';
+        } else if (age >= minimumAge) {
+            ageResult.textContent = `Tens ${age} anys; compleixes l'edat mínima.`;
+        } else {
+            ageResult.textContent = `Has de tenir com a mínim ${minimumAge} anys.`;
+        }
+    });
+
     form.addEventListener('submit', async (event) => {
         const password = passwordInput.value;
 
         event.preventDefault();
+
+        if (password !== confirmPasswordInput.value) {
+            updatePasswordMatch();
+            alert('Les contrasenyes no coincideixen.');
+            confirmPasswordInput.focus();
+            return;
+        }
+
+        const age = calcularEdad(birthDateInput.value);
+        if (age === null || age < minimumAge) {
+            ageResult.textContent = `Has de tenir com a mínim ${minimumAge} anys.`;
+            birthDateInput.focus();
+            return;
+        }
 
         if ([...password].length < minimumPasswordLength) {
             alert('La contrasenya ha de tenir com a mínim 12 caràcters');

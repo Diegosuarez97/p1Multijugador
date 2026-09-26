@@ -32,6 +32,15 @@ $parameters = $_GET;
 $post_parameters = $_POST;
 
 if (isset($post_parameters['register'])) {
+    $birth_date_text = $post_parameters['birth_date'] ?? '';
+    $birth_date = false;
+    $valid_birth_date = false;
+    if ($birth_date_text !== '') {
+        $birth_date = DateTimeImmutable::createFromFormat('!Y-m-d', $birth_date_text);
+        $valid_birth_date = $birth_date && $birth_date->format('Y-m-d') === $birth_date_text;
+    }
+    $today = new DateTimeImmutable('today');
+
     // 0. Validar que el nom d'usuari no estigui buit
     if (trim($post_parameters['user_name']) == '') {
         $_SESSION['feedback'] = '<mark>ERROR: Has d\'introduir un nom d\'usuari</mark>';
@@ -50,7 +59,27 @@ if (isset($post_parameters['register'])) {
         $_SESSION['old_username'] = $post_parameters['user_name'];
         header('Location: /?page=register');
         exit();
-    } else {
+    }  else if (!filter_var($post_parameters['user_email'] ?? '', FILTER_VALIDATE_EMAIL)) {
+          $_SESSION['feedback'] = '<mark>El correu electrònic no és vàlid</mark>';
+          $_SESSION['old_username'] = $post_parameters['user_name'];
+          header('Location: /?page=register');
+          exit();
+      } else if (!$valid_birth_date) {
+          $_SESSION['feedback'] = '<mark>Introdueix una data de naixement vàlida</mark>';
+          $_SESSION['old_username'] = $post_parameters['user_name'];
+          header('Location: /?page=register');
+          exit();
+      } else if ($birth_date > $today) {
+          $_SESSION['feedback'] = '<mark>La data de naixement no pot ser futura</mark>';
+          $_SESSION['old_username'] = $post_parameters['user_name'];
+          header('Location: /?page=register');
+          exit();
+      } else if ($birth_date->diff($today)->y < 16) {
+          $_SESSION['feedback'] = '<mark>Has de tenir com a mínim 16 anys</mark>';
+          $_SESSION['old_username'] = $post_parameters['user_name'];
+          header('Location: /?page=register');
+          exit();
+      } else {
         $db = new PDO($db_connection);
 
         // 3. Comprobar si l'usuari ja existeix
@@ -88,12 +117,24 @@ if (isset($post_parameters['register'])) {
     }
 } else if (isset($post_parameters['login'])) {
     $db = new PDO($db_connection);
+
     $sql = 'SELECT * FROM users WHERE user_name = :user_name';
     $query = $db->prepare($sql);
     $query->bindValue(':user_name', $post_parameters['user_name']);
     $query->execute();
     $userRow = $query->fetchObject();
     $passwordMatchs = false;
+    $sql_check_email = 'SELECT COUNT(*) FROM users WHERE user_email = :user_email';
+    $query_check_email = $db->prepare($sql_check_email);
+    $query_check_email->bindValue(':user_email', $post_parameters['user_email']);
+    $query_check_email->execute();
+
+    if ($query_check_email->fetchColumn() > 0) {
+        $_SESSION['feedback'] = '<mark>Aquest correu ja està registrat</mark>';
+        $_SESSION['old_username'] = $post_parameters['user_name'];
+        header('Location: /?page=register');
+        exit();
+    }
     if ($userRow) {
         $storedPassword = password_get_info($userRow->user_password);
         if ($storedPassword['algo'] !== null && $storedPassword['algo'] !== 0) {
