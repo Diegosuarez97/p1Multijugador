@@ -12,34 +12,147 @@ $configuration = array(
     '{FEEDBACK}'          => '',
     '{LOGIN_LOGOUT_TEXT}' => 'Identificar-me',
     '{LOGIN_LOGOUT_URL}'  => '/?page=login',
-    '{METHOD}'            => 'GET', // es veuen els paràmetres a l'URL i a la consola (???)
+    '{METHOD}'            => 'POST',
     '{REGISTER_URL}'      => '/?page=register',
     '{SITE_NAME}'         => 'La meva pàgina'
 );
+
+// Recuperar missatges temporals de la sessió (després d'una redirecció PRG)
+if (isset($_SESSION['feedback'])) {
+    $configuration['{FEEDBACK}'] = $_SESSION['feedback'];
+    unset($_SESSION['feedback']);
+}
+if (isset($_SESSION['old_username'])) {
+    $configuration['{REGISTER_USERNAME}'] = htmlentities($_SESSION['old_username']);
+    unset($_SESSION['old_username']);
+}
+
 // processament de paràmetres
 $parameters = $_GET;
 $post_parameters = $_POST;
-if (isset($parameters['page'])) {
-    if ($parameters['page'] == 'register') {
-        $template = 'register';
-        $configuration['{REGISTER_USERNAME}'] = '';
-        $configuration['{LOGIN_LOGOUT_TEXT}'] = 'Ja tinc un compte';
-    } else if ($parameters['page'] == 'login') {
-        $template = 'login';
-        $configuration['{LOGIN_USERNAME}'] = '';
-    } else if ($parameters['page'] == 'forgot') { //Canvi a la plantilla recuperar contrasenya
-            $template = 'forgot_pass';
-    } else if ($parameters['page'] == 'logout') {
-        $_SESSION = array(); // oblida les dades carregades en aquesta petició
-        session_destroy();  // elimina la sessió desada al servidor
-    }
-}
 
-else if (isset($_POST['forgot_password'])) {
-    $user_name = trim($_POST['user_name'] ?? '');
+if (isset($post_parameters['register'])) {
+    $birth_date_text = $post_parameters['birth_date'] ?? '';
+    $birth_date = false;
+    $valid_birth_date = false;
+    if ($birth_date_text !== '') {
+        $birth_date = DateTimeImmutable::createFromFormat('!Y-m-d', $birth_date_text);
+        $valid_birth_date = $birth_date && $birth_date->format('Y-m-d') === $birth_date_text;
+    }
+    $today = new DateTimeImmutable('today');
+
+    if (trim($post_parameters['user_name']) == '') {
+        $_SESSION['feedback'] = '<mark>ERROR: Has d\'introduir un nom d\'usuari</mark>';
+        $_SESSION['old_username'] = '';
+        header('Location: /?page=register');
+        exit();
+    } else if (iconv_strlen(trim($post_parameters['user_name']), 'UTF-8') < 3) {
+        $_SESSION['feedback'] = '<mark>ERROR: El nom d\'usuari ha de tenir com a mínim 3 caràcters</mark>';
+        $_SESSION['old_username'] = $post_parameters['user_name'];
+        header('Location: /?page=register');
+        exit();
+    } else if (iconv_strlen($post_parameters['user_password'], 'UTF-8') < 12) {
+        $_SESSION['feedback'] = '<mark>ERROR: La contrasenya ha de tenir mínim 12 caràcters</mark>';
+        $_SESSION['old_username'] = $post_parameters['user_name'];
+        header('Location: /?page=register');
+        exit();
+    } else if (!filter_var($post_parameters['user_email'] ?? '', FILTER_VALIDATE_EMAIL)) {
+        $_SESSION['feedback'] = '<mark>El correu electrònic no és vàlid</mark>';
+        $_SESSION['old_username'] = $post_parameters['user_name'];
+        header('Location: /?page=register');
+        exit();
+    } else if (!$valid_birth_date) {
+        $_SESSION['feedback'] = '<mark>Introdueix una data de naixement vàlida</mark>';
+        $_SESSION['old_username'] = $post_parameters['user_name'];
+        header('Location: /?page=register');
+        exit();
+    } else if ($birth_date > $today) {
+        $_SESSION['feedback'] = '<mark>La data de naixement no pot ser futura</mark>';
+        $_SESSION['old_username'] = $post_parameters['user_name'];
+        header('Location: /?page=register');
+        exit();
+    } else if ($birth_date->diff($today)->y < 16) {
+        $_SESSION['feedback'] = '<mark>Has de tenir com a mínim 16 anys</mark>';
+        $_SESSION['old_username'] = $post_parameters['user_name'];
+        header('Location: /?page=register');
+        exit();
+    } else {
+        $db = new PDO($db_connection);
+
+        $sql_check = 'SELECT COUNT(*) FROM users WHERE user_name = :user_name';
+        $comprovarNomUsuari = $db->prepare($sql_check);
+        $comprovarNomUsuari->bindValue(':user_name', $post_parameters['user_name']);
+        $comprovarNomUsuari->execute();
+
+        if ($comprovarNomUsuari->fetchColumn() > 0) {
+            $_SESSION['feedback'] = '<mark>ERROR: Aquest usuari ja existeix</mark>';
+            $_SESSION['old_username'] = $post_parameters['user_name'];
+            header('Location: /?page=register');
+            exit();
+        } else {
+            $password_hash = password_hash($post_parameters['user_password'], PASSWORD_DEFAULT);
+            $sql = 'INSERT INTO users (user_name, user_email, birth_date, user_password)
+                    VALUES (:user_name, :user_email, :birth_date, :user_password)';
+            $query = $db->prepare($sql);
+            $query->bindValue(':user_name', $post_parameters['user_name']);
+            $query->bindValue(':user_password', $password_hash);
+            $query->bindValue(':user_email', $post_parameters['user_email']);
+            $query->bindValue(':birth_date', $birth_date_text);
+
+            if ($query->execute()) {
+                session_regenerate_id(true);
+                $_SESSION['user_name'] = $post_parameters['user_name'];
+                $_SESSION['feedback'] = 'Compte creat. Sessió iniciada com <b>' . htmlentities($post_parameters['user_name']) . '</b>';
+                header('Location: /');
+                exit();
+            } else {
+                $_SESSION['feedback'] = '<mark>ERROR al crear el compte</mark>';
+                header('Location: /?page=register');
+                exit();
+            }
+        }
+    }
+} else if (isset($post_parameters['login'])) {
+    $db = new PDO($db_connection);
+
+    $sql = 'SELECT * FROM users WHERE user_name = :user_name';
+    $query = $db->prepare($sql);
+    $query->bindValue(':user_name', $post_parameters['user_name']);
+    $query->execute();
+    $userRow = $query->fetchObject();
+    $passwordMatchs = false;
+
+    if ($userRow) {
+        $storedPassword = password_get_info($userRow->user_password);
+        if ($storedPassword['algo'] !== null && $storedPassword['algo'] !== 0) {
+            $passwordMatchs = password_verify($post_parameters['user_password'], $userRow->user_password);
+        } else {
+            $passwordMatchs = hash_equals($userRow->user_password, $post_parameters['user_password']);
+        }
+    }
+
+    if ($userRow && $passwordMatchs) {
+        session_regenerate_id(true);
+        $_SESSION['user_name'] = $userRow->user_name;
+
+        if ($storedPassword['algo'] === null || $storedPassword['algo'] === 0 || password_needs_rehash($userRow->user_password, PASSWORD_DEFAULT)) {
+            $update = $db->prepare('UPDATE users SET user_password = :user_password WHERE user_id = :user_id');
+            $update->bindValue(':user_password', password_hash($post_parameters['user_password'], PASSWORD_DEFAULT));
+            $update->bindValue(':user_id', $userRow->user_id);
+            $update->execute();
+        }
+
+        $configuration['{FEEDBACK}'] = 'Sessió iniciada com <b>' . htmlentities($post_parameters['user_name']) . '</b>';
+        $configuration['{LOGIN_LOGOUT_TEXT}'] = 'Tancar sessió';
+        $configuration['{LOGIN_LOGOUT_URL}'] = '/?page=logout';
+    } else {
+        $configuration['{FEEDBACK}'] = '<mark>ERROR: Usuari desconegut o contrasenya incorrecta</mark>';
+    }
+} else if (isset($post_parameters['forgot_password'])) {
+    $user_name = trim($post_parameters['user_name'] ?? '');
 
     if ($user_name === '') {
-        $template = 'forgot';
+        $template = 'forgot_pass';
         $configuration['{FEEDBACK}'] = '<mark>ERROR: Escriu el nom d\'usuari</mark>';
     } else {
         $db = new PDO($db_connection);
@@ -72,41 +185,21 @@ else if (isset($_POST['forgot_password'])) {
                 'Si l\'usuari existeix, s\'ha generat un enllaç de recuperació.';
         }
     }
-}
-
-else if (isset($parameters['register'])) {
-    $db = new PDO($db_connection);
-    $sql = 'INSERT INTO users (user_name, user_password) VALUES (:user_name, :user_password)';
-    $query = $db->prepare($sql);
-    $query->bindValue(':user_name', $parameters['user_name']);
-    $query->bindValue(':user_password', $parameters['user_password']);
-    if ($query->execute()) {
-        $configuration['{FEEDBACK}'] = 'Creat el compte <b>' . htmlentities($parameters['user_name']) . '</b>';
-        $configuration['{LOGIN_LOGOUT_TEXT}'] = 'Tancar sessió';
-    } else {
-        // això no s'executarà mai (???)
-        $configuration['{FEEDBACK}'] = "<mark>ERROR: No s'ha pogut crear el compte <b>"
-            . htmlentities($parameters['user_name']) . '</b></mark>';
-    }
-}
-
-else if (isset($parameters['login'])) {
-    $db = new PDO($db_connection);
-    $sql = 'SELECT * FROM users WHERE user_name = :user_name and user_password = :user_password';
-    $query = $db->prepare($sql);
-    $query->bindValue(':user_name', $parameters['user_name']);
-    $query->bindValue(':user_password', $parameters['user_password']);
-    $query->execute();
-    $result_row = $query->fetchObject();
-    if ($result_row) {
-        // nou identificador de sessió per no reutilitzar el que tenia abans del login
-        session_regenerate_id(true);
-        $_SESSION['user_name'] = $result_row->user_name;
-        $configuration['{FEEDBACK}'] = 'Sessió iniciada com <b>' . htmlentities($parameters['user_name']) . '</b>';
-        $configuration['{LOGIN_LOGOUT_TEXT}'] = 'Tancar sessió';
-        $configuration['{LOGIN_LOGOUT_URL}'] = '/?page=logout';
-    } else {
-        $configuration['{FEEDBACK}'] = '<mark>ERROR: Usuari desconegut o contrasenya incorrecta</mark>';
+} else if (isset($parameters['page'])) {
+    if ($parameters['page'] == 'register') {
+        $template = 'register';
+        if (!isset($configuration['{REGISTER_USERNAME}'])) {
+            $configuration['{REGISTER_USERNAME}'] = '';
+        }
+        $configuration['{LOGIN_LOGOUT_TEXT}'] = 'Ja tinc un compte';
+    } else if ($parameters['page'] == 'login') {
+        $template = 'login';
+        $configuration['{LOGIN_USERNAME}'] = '';
+    } else if ($parameters['page'] == 'forgot') {
+        $template = 'forgot_pass';
+    } else if ($parameters['page'] == 'logout') {
+        $_SESSION = array();
+        session_destroy();
     }
 }
 // adaptem la pàgina inicial a l'usuari identificat
