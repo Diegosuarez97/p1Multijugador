@@ -53,6 +53,7 @@ if (isset($parameters['page'])) {
                 $configuration['{DATA_USERNAME}'] = $result_row->user_name;
                 $configuration['{DATA_EMAIL}'] = '$result_row->email';
                 $configuration['{DATA_NICKNAME}'] = $result_row->nickname;
+                $configuration['{DATA_AVATAR}'] = $result_row->avatar;
             } else {
                 $configuration['{FEEDBACK}'] = "<mark>ERROR: No s'ha pogut obtenir les dades del perfil</mark>";
             }
@@ -111,17 +112,45 @@ if (isset($parameters['page'])) {
         $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per eliminar el compte';
     }
 } else if (isset($parameters['edit'])) {
-    var_dump($_POST);
     if (isset($_SESSION['user_name'])) {
-        $db = new PDO($db_connection);
-        $sql = 'UPDATE users SET nickname = :new_nickname WHERE user_name = :user_name';
-        $query = $db->prepare($sql);
-        $query->bindValue(':new_nickname', $parameters['data_nickname']);
-        $query->bindValue(':user_name', $_SESSION['user_name']);
-        if ($query->execute()) {
-            $configuration['{FEEDBACK}'] = 'El perfil s\'ha actualitzat correctament';
-        } else {
-            $configuration['{FEEDBACK}'] = '<mark>ERROR: No s\'ha pogut actualitzar el perfil</mark>';
+        $avatar = $_FILES['data_avatar'] ?? null;
+        $avatar_path = null;
+
+        if ($avatar !== null) {
+            $allowed_mime_types = array('image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml');
+            $avatar_is_valid = in_array($avatar['type'], $allowed_mime_types, true);
+
+            if (!$avatar_is_valid) {
+                $configuration['{FEEDBACK}'] = '<mark>ERROR: L\'avatar ha de ser una imatge vàlida</mark>';
+            } else {
+                $filename = $avatar["name"];
+                $tempname = $avatar["tmp_name"];
+                $folder = './uploads/' . $filename;
+
+                if (move_uploaded_file($tempname, $folder)) $avatar_path = '/uploads/' . $filename;
+                else $configuration['{FEEDBACK}'] = '<mark>ERROR: No s\'ha pogut desar l\'avatar</mark>';
+            }
+        }
+
+        // si no hi ha cap feedback es que tot ha anat be, fins ara
+        if ($configuration['{FEEDBACK}'] === '') {
+            $db = new PDO($db_connection);
+            if ($avatar_path !== null) {
+                $sql = 'UPDATE users SET nickname = :new_nickname, avatar = :avatar WHERE user_name = :user_name';
+            } else {
+                $sql = 'UPDATE users SET nickname = :new_nickname WHERE user_name = :user_name';
+            }
+            $query = $db->prepare($sql);
+            $query->bindValue(':new_nickname', $parameters['data_nickname']);
+            if ($avatar_path !== null) {
+                $query->bindValue(':avatar', $avatar_path);
+            }
+            $query->bindValue(':user_name', $_SESSION['user_name']);
+            if ($query->execute()) {
+                $configuration['{FEEDBACK}'] = 'El perfil s\'ha actualitzat correctament';
+            } else {
+                $configuration['{FEEDBACK}'] = '<mark>ERROR: No s\'ha pogut actualitzar el perfil</mark>';
+            }
         }
     } else {
         $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per editar el perfil';

@@ -18,7 +18,7 @@ if ! command -v sqlite3 >/dev/null 2>&1; then
   exit 1
 fi
 
-if sqlite3 "$DB_FILE" "CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, user_name varchar(63), user_password varchar(255), nickname varchar(150));" \
+sqlite3 "$DB_FILE" "CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, user_name varchar(63), user_password varchar(255), nickname varchar(150), avatar varchar(255));" \
   && sqlite3 "$DB_FILE" "CREATE UNIQUE INDEX user_name_UNIQUE ON users (user_name ASC);"; then
   echo "S'ha creat la base de dades \"users.db\""
   echo
