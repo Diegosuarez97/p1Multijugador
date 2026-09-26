@@ -35,6 +35,9 @@ if (isset($_SESSION['old_username'])) {
 $parameters = $_GET;
 $post_parameters = $_POST;
 
+var_dump($parameters);
+var_dump($post_parameters);
+
 if (isset($post_parameters['register'])) {
     $birth_date_text = $post_parameters['birth_date'] ?? '';
     $birth_date = false;
@@ -278,53 +281,6 @@ if (isset($post_parameters['register'])) {
             $configuration['{FEEDBACK}'] = '<mark>ERROR: Enllac incorrecte, caducat o ja utilitzat</mark>';
         }
     }
-} else if (isset($parameters['page'])) {
-    if ($parameters['page'] == 'register') {
-        $template = 'register';
-        if (!isset($configuration['{REGISTER_USERNAME}'])) {
-            $configuration['{REGISTER_USERNAME}'] = '';
-        }
-        $configuration['{LOGIN_LOGOUT_TEXT}'] = 'Ja tinc un compte';
-    } else if ($parameters['page'] == 'login') {
-        $template = 'login';
-        $configuration['{LOGIN_USERNAME}'] = '';
-    } else if ($parameters['page'] == 'forgot') {
-        $template = 'forgot_pass';
-    } else if ($parameters['page'] == 'reset') {
-        $template = 'reset_pass';
-        $configuration['{RESET_TOKEN}'] = htmlentities($parameters['token'] ?? '');
-    } else if ($parameters['page'] == 'logout') {
-        $_SESSION = array();
-        session_destroy();
-    } else if ($parameters['page'] == 'delete') {
-        if (isset($_SESSION['user_name'])) {
-            $template = 'delete';
-        } else {
-            $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per eliminar el compte';
-        }
-    } else if ($parameters['page'] == 'edit') {
-        if (isset($_SESSION['user_name'])) {
-            $db = new PDO($db_connection);
-            $sql = 'SELECT * FROM users WHERE user_name = :user_name';
-            $query = $db->prepare($sql);
-            $query->bindValue(':user_name', $_SESSION['user_name']);
-            $query->execute();
-            $result_row = $query->fetchObject();
-            if ($result_row) {
-                $template = 'edit';
-                $configuration['{DATA_USERNAME}'] = $result_row->user_name;
-                $configuration['{DATA_EMAIL}'] = $result_row->user_email;
-                $configuration['{DATA_NICKNAME}'] = $result_row->nickname;
-                $configuration['{DATA_AVATAR}'] = $result_row->avatar;
-                $configuration['{DATA_BIRTHDATE}'] = $result_row->birth_date;
-            } else {
-                $configuration['{FEEDBACK}'] = "<mark>ERROR: No s'ha pogut obtenir les dades del perfil</mark>";
-            }
-
-        } else {
-            $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per editar el perfil';
-        }
-    }
 } else if (isset($post_parameters['delete'])) {
     if (isset($_SESSION['user_name'])) {
         $db = new PDO($db_connection);
@@ -372,7 +328,7 @@ if (isset($post_parameters['register'])) {
                 $sql = 'UPDATE users SET nickname = :new_nickname WHERE user_name = :user_name';
             }
             $query = $db->prepare($sql);
-            $query->bindValue(':new_nickname', $parameters['data_nickname']);
+            $query->bindValue(':new_nickname', $post_parameters['data_nickname']);
             if ($avatar_path !== null) {
                 $query->bindValue(':avatar', $avatar_path);
             }
@@ -385,6 +341,53 @@ if (isset($post_parameters['register'])) {
         }
     } else {
         $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per editar el perfil';
+    }
+} else if (isset($parameters['page'])) {
+    if ($parameters['page'] == 'register') {
+        $template = 'register';
+        if (!isset($configuration['{REGISTER_USERNAME}'])) {
+            $configuration['{REGISTER_USERNAME}'] = '';
+        }
+        $configuration['{LOGIN_LOGOUT_TEXT}'] = 'Ja tinc un compte';
+    } else if ($parameters['page'] == 'login') {
+        $template = 'login';
+        $configuration['{LOGIN_USERNAME}'] = '';
+    } else if ($parameters['page'] == 'forgot') {
+        $template = 'forgot_pass';
+    } else if ($parameters['page'] == 'reset') {
+        $template = 'reset_pass';
+        $configuration['{RESET_TOKEN}'] = htmlentities($parameters['token'] ?? '');
+    } else if ($parameters['page'] == 'logout') {
+        $_SESSION = array();
+        session_destroy();
+    } else if ($parameters['page'] == 'delete') {
+        if (isset($_SESSION['user_name'])) {
+            $template = 'delete';
+        } else {
+            $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per eliminar el compte';
+        }
+    } else if ($parameters['page'] == 'edit') {
+        if (isset($_SESSION['user_name'])) {
+            $db = new PDO($db_connection);
+            $sql = 'SELECT * FROM users WHERE user_name = :user_name';
+            $query = $db->prepare($sql);
+            $query->bindValue(':user_name', $_SESSION['user_name']);
+            $query->execute();
+            $result_row = $query->fetchObject();
+            if ($result_row) {
+                $template = 'edit';
+                $configuration['{DATA_USERNAME}'] = $result_row->user_name;
+                $configuration['{DATA_EMAIL}'] = $result_row->user_email;
+                $configuration['{DATA_NICKNAME}'] = $result_row->nickname;
+                $configuration['{DATA_AVATAR}'] = $result_row->avatar;
+                $configuration['{DATA_BIRTHDATE}'] = $result_row->birth_date;
+            } else {
+                $configuration['{FEEDBACK}'] = "<mark>ERROR: No s'ha pogut obtenir les dades del perfil</mark>";
+            }
+
+        } else {
+            $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per editar el perfil';
+        }
     }
 }
 

@@ -31,7 +31,7 @@
             <header>
                 <h2>Edició de les dades del perfil</h2>
             </header>
-            <form action="/?page=edit" method="post" enctype="multipart/form-data">
+            <form action="/?page=edit" method="{METHOD}" enctype="multipart/form-data">
                 <div>
                     <label for="data_username">Nom d'usuari:</label>
                     <input type="text" id="data_username" name="data_username" value="{DATA_USERNAME}" disabled>
@@ -39,6 +39,10 @@
                 <div>
                     <label for="data_email">Correu electrònic:</label>
                     <input type="text" id="data_email" name="data_email" value="{DATA_EMAIL}" disabled>
+                </div>
+                <div>
+                    <label for="data_birthdate">Data de naixement:</label>
+                    <input type="date" id="data_birthdate" name="data_birthdate" value="{DATA_BIRTHDATE}" disabled>
                 </div>
                 <div>
                     <label for="data_nickname">Nickname:</label>
