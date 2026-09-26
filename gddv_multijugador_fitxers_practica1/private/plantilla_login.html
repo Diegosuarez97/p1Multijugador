@@ -8,36 +8,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"><!-- per a dispositius mòbils -->
     <meta name="author" content="Antonio Bueno (UdG)">
     <!-- estètica de la pàgina -->
-    <link rel="icon" href="/favicon.png">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="mvp.css">
     <link rel="stylesheet" href="el_meu.css">
     <!-- per afegir interactivitat a la pàgina -->
     <script defer src="el_meu.js"></script>
 </head>
 
-<body>
+<body class="auth-page login-page">
     <!-- contingut visible de la pàgina -->
-    <main>
-        <header>
-            <h1><a href="/">{SITE_NAME}</a></h1>
-            <div>{FEEDBACK}</div>
+    <main class="auth-shell login-shell">
+        <header class="auth-heading">
+            <h1><span class="auth-title-outline" aria-hidden="true">{SITE_NAME}</span><a href="/">{SITE_NAME}</a></h1>
+            <div class="auth-feedback">{FEEDBACK}</div>
         </header>
-        <section>
-            <form method="{METHOD}" action="{LOGIN_LOGOUT_URL}">
+        <section class="auth-form-section">
+            <form id="login-form" class="auth-card login-card" method="{METHOD}" action="{LOGIN_LOGOUT_URL}">
+                <img class="auth-illustration login-illustration" src="/images/login.png" alt="" aria-hidden="true">
                 <header>
                     <h2>Inici de sessió</h2>
                 </header>
                 <label for="login_username">Nom d'usuari</label>
-                <input id="login_username" type="text" name="user_name" value="{LOGIN_USERNAME}" />
+                <input id="login_username" type="text" name="user_name" value="{LOGIN_USERNAME}" required />
                 <label for="login_password">Contrasenya</label>
-                <input id="login_password" type="password" name="user_password" />
-                <input type="submit" name="login" value="Iniciar sessió" />
+                <input id="login_password" type="password" name="user_password" required />
             </form>
+            <button class="animated-submit login-submit" type="submit" name="login" value="1" form="login-form">
+                <span class="button-label">Iniciar sessió</span>
+            </button>
         </section>
-        <section>
-            <div>
-                <a href="{REGISTER_URL}">Registra un nou compte</a>
-            </div>
+        <section class="auth-switch">
+            <a href="{REGISTER_URL}">Registra un nou compte</a>
         </section>
     </main>
 </body>

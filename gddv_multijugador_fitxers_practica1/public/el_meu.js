@@ -52,9 +52,45 @@ function calcularEdad(fechaNacimiento) {
     return edad;
 }
 
+function animarBotonYEnviar(form, button, actionName) {
+    const inputHidden = document.createElement('input');
+    inputHidden.type = 'hidden';
+    inputHidden.name = actionName;
+    inputHidden.value = '1';
+    form.appendChild(inputHidden);
+
+    const animatedElement = button.querySelector('.cat-runner') || button;
+    button.disabled = true;
+    animatedElement.addEventListener('animationend', () => form.submit(), { once: true });
+    button.classList.add('cat-running');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    const form = document.querySelector('input[name="register"]')?.closest('form');
-    if (!form) return;
+    document.querySelectorAll('.home-action').forEach((link) => {
+        link.addEventListener('click', (event) => {
+            event.preventDefault();
+            const cat = link.querySelector('.home-cat');
+            cat.addEventListener('animationend', () => {
+                window.location.assign(link.href);
+            }, { once: true });
+            link.classList.add('home-action-running');
+        });
+    });
+
+    const registerButton = document.querySelector('[name="register"]');
+    const loginButton = document.querySelector('[name="login"]');
+
+    if (loginButton && !registerButton) {
+        const loginForm = loginButton.form;
+        loginForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            animarBotonYEnviar(loginForm, loginButton, 'login');
+        });
+        return;
+    }
+
+    if (!registerButton) return;
+    const form = registerButton.closest('form');
 
     const minimumPasswordLength = 12;
     const minimumAge = 16;
@@ -133,13 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn('No se ha podido comprobar la contraseña con HIBP:', err);
         }
 
-        // CREEM UN INPUT AMAGAT PERQUÈ PHP DETECTI EL CLIC DE "REGISTER"
-        const inputHidden = document.createElement('input');
-        inputHidden.type = 'hidden';
-        inputHidden.name = 'register';
-        inputHidden.value = '1';
-        form.appendChild(inputHidden);
-
-        form.submit();
+        animarBotonYEnviar(form, registerButton, 'register');
     });
 });

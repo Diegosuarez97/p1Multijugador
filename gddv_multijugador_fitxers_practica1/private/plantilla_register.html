@@ -8,27 +8,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1"><!-- per a dispositius mòbils -->
     <meta name="author" content="Antonio Bueno (UdG)">
     <!-- estètica de la pàgina -->
-    <link rel="icon" href="/favicon.png">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="mvp.css">
     <link rel="stylesheet" href="el_meu.css">
     <!-- per afegir interactivitat a la pàgina -->
     <script defer src="el_meu.js"></script>
 </head>
 
-<body>
+<body class="auth-page register-page">
     <!-- contingut visible de la pàgina -->
-    <main>
-        <header>
-            <h1><a href="/">{SITE_NAME}</a></h1>
-            <div>{FEEDBACK}</div>
+    <main class="auth-shell register-shell">
+        <header class="auth-heading">
+            <h1><span class="auth-title-outline" aria-hidden="true">{SITE_NAME}</span><a href="/">{SITE_NAME}</a></h1>
+            <div class="auth-feedback">{FEEDBACK}</div>
         </header>
-        <section>
-            <form method="{METHOD}" action="{REGISTER_URL}">
+        <section class="auth-form-section">
+            <form class="auth-card register-card" method="{METHOD}" action="{REGISTER_URL}">
+                <img class="auth-illustration register-illustration" src="/images/register.png" alt="" aria-hidden="true">
                 <header>
                     <h2>Crea un nou compte</h2>
                 </header>
                 <label for="register_username">Nom d'usuari</label>
-                <input id="register_username" type="text" name="user_name" value="{REGISTER_USERNAME}" />
+                <input id="register_username" type="text" name="user_name" value="{REGISTER_USERNAME}"
+                    minlength="3" maxlength="63" required />
+                <small class="field-hint">Mínim: 3 caràcters.</small>
 
                 <label for="register_email">Correu electrònic</label>
 
@@ -41,7 +44,7 @@
                 <label for="register_password">Contrasenya</label>
                 <div class="password-guidance" id="password-guidance">
                     <strong>Consell:</strong> tria una frase llarga que puguis recordar fàcilment.
-                    Calen com a mínim 12 caràcters. Pots fer servir espais, símbols i emojis.
+                    Com a mínim, 12 caràcters. Pots combinar paraules i espais.
                 </div>
 
                 <input id="register_password" type="password" name="user_password"
@@ -53,13 +56,13 @@
                 <input id="confirm_password" type="password" autocomplete="new-password"
                     aria-describedby="password-match-result" required />
                 <p id="password-match-result" aria-live="polite"></p>
-                <input type="submit" name="register" value="Crear compte" />
+                <button class="animated-submit" type="submit" name="register" value="1">
+                    <span class="button-label">Crear compte</span>
+                </button>
             </form>
         </section>
-        <section>
-            <div>
-                <a href="{LOGIN_LOGOUT_URL}">{LOGIN_LOGOUT_TEXT}</a>
-            </div>
+        <section class="auth-switch">
+            <a href="{LOGIN_LOGOUT_URL}">{LOGIN_LOGOUT_TEXT}</a>
         </section>
     </main>
 </body>
