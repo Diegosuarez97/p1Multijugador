@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ca" color-mode="user">
+
+<head>
+    <!-- dades tècniques de la pàgina -->
+    <meta charset="utf-8">
+    <title>{SITE_NAME} :: Edició de detalls</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"><!-- per a dispositius mòbils -->
+    <meta name="description" content="Una plantilla web molt bàsica per no començar des de zero">
+    <meta name="author" content="Mikolaj Jaworski">
+    <!-- estètica de la pàgina -->
+    <link rel="icon" href="/favicon.png">
+    <link rel="stylesheet" href="mvp.css">
+    <link rel="stylesheet" href="el_meu.css">
+    <!-- metadades Open Graph -->
+    <meta property="og:title" content="Plantilla bàsica HTML5">
+    <meta property="og:type" content="website">
+    <meta property="og:description" content="Una plantilla web molt bàsica per no començar des de zero">
+    <meta property="og:image" content="og_image.png">
+    <!-- per afegir interactivitat a la pàgina -->
+    <script defer src="el_meu.js"></script>
+</head>
+
+<body>
+    <!-- contingut visible de la pàgina -->
+    <main>
+        <header>
+            <h1>La meva página</h1>
+        </header>
+        <section>
+            <header>
+                <h2>Edició de les dades del perfil</h2>
+            </header>
+            <form action="/?page=edit" method="post" enctype="multipart/form-data">
+                <div>
+                    <label for="data_username">Nom d'usuari:</label>
+                    <input type="text" id="data_username" name="data_username" value="{DATA_USERNAME}" disabled>
+                </div>
+                <div>
+                    <label for="data_email">Correu electrònic:</label>
+                    <input type="text" id="data_email" name="data_email" value="{DATA_EMAIL}" disabled>
+                </div>
+                <div>
+                    <label for="data_nickname">Nickname:</label>
+                    <input type="text" id="data_nickname" name="data_nickname" value="{DATA_NICKNAME}" required>
+                </div>
+                <div>
+                    <label for="data_avatar">Avatar:</label>
+                    <input type="file" id="data_avatar" name="data_avatar" accept="image/*">
+                    <img src="{DATA_AVATAR}" alt="Avatar" width="100" height="100">
+                </div>
+                <div>
+                    <button type="submit" name="edit" value="Actualitza el perfil">Actualitzar perfil</button>
+                </div>
+            </form>
+        </section>
+        <a href="/">Tornar a la pàgina principal</a>
+    </main>
+</body>
+
+</html>

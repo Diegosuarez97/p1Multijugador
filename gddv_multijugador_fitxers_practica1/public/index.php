@@ -10,7 +10,7 @@ $smtp_config = require __DIR__ . '/../private/smtp_config.php';
 
 // valors per defecte
 $template = 'home';
-$db_connection = 'sqlite:..\private\users.db';
+$db_connection = 'sqlite:' . dirname(__DIR__) . DIRECTORY_SEPARATOR . 'private' . DIRECTORY_SEPARATOR . 'users.db';
 $configuration = array(
     '{FEEDBACK}' => '',
     '{LOGIN_LOGOUT_TEXT}' => 'Identificar-me',
@@ -296,6 +296,95 @@ if (isset($post_parameters['register'])) {
     } else if ($parameters['page'] == 'logout') {
         $_SESSION = array();
         session_destroy();
+    } else if ($parameters['page'] == 'delete') {
+        if (isset($_SESSION['user_name'])) {
+            $template = 'delete';
+        } else {
+            $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per eliminar el compte';
+        }
+    } else if ($parameters['page'] == 'edit') {
+        if (isset($_SESSION['user_name'])) {
+            $db = new PDO($db_connection);
+            $sql = 'SELECT * FROM users WHERE user_name = :user_name';
+            $query = $db->prepare($sql);
+            $query->bindValue(':user_name', $_SESSION['user_name']);
+            $query->execute();
+            $result_row = $query->fetchObject();
+            if ($result_row) {
+                $template = 'edit';
+                $configuration['{DATA_USERNAME}'] = $result_row->user_name;
+                $configuration['{DATA_EMAIL}'] = $result_row->user_email;
+                $configuration['{DATA_NICKNAME}'] = $result_row->nickname;
+                $configuration['{DATA_AVATAR}'] = $result_row->avatar;
+                $configuration['{DATA_BIRTHDATE}'] = $result_row->birth_date;
+            } else {
+                $configuration['{FEEDBACK}'] = "<mark>ERROR: No s'ha pogut obtenir les dades del perfil</mark>";
+            }
+
+        } else {
+            $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per editar el perfil';
+        }
+    }
+} else if (isset($post_parameters['delete'])) {
+    if (isset($_SESSION['user_name'])) {
+        $db = new PDO($db_connection);
+        $sql = 'DELETE FROM users WHERE user_name = :user_name';
+        $query = $db->prepare($sql);
+        $query->bindValue(':user_name', $_SESSION['user_name']);
+        $query->execute();
+        if ($query->execute()) {
+            $_SESSION = array();
+            session_destroy();
+            $configuration['{FEEDBACK}'] = 'El compte s\'ha eliminat correctament';
+        } else {
+            $configuration['{FEEDBACK}'] = '<mark>ERROR: No s\'ha pogut eliminar el compte</mark>';
+        }
+    } else {
+        $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per eliminar el compte';
+    }
+} else if (isset($post_parameters['edit'])) {
+    if (isset($_SESSION['user_name'])) {
+        $avatar = $_FILES['data_avatar'] ?? null;
+        $avatar_path = null;
+
+        if ($avatar !== null) {
+            $allowed_mime_types = array('image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml');
+            $avatar_is_valid = in_array($avatar['type'], $allowed_mime_types, true);
+
+            if (!$avatar_is_valid) {
+                $configuration['{FEEDBACK}'] = '<mark>ERROR: L\'avatar ha de ser una imatge vàlida</mark>';
+            } else {
+                $filename = $avatar["name"];
+                $tempname = $avatar["tmp_name"];
+                $folder = './uploads/' . $filename;
+
+                if (move_uploaded_file($tempname, $folder)) $avatar_path = '/uploads/' . $filename;
+                else $configuration['{FEEDBACK}'] = '<mark>ERROR: No s\'ha pogut desar l\'avatar</mark>';
+            }
+        }
+
+        // si no hi ha cap feedback es que tot ha anat be, fins ara
+        if ($configuration['{FEEDBACK}'] === '') {
+            $db = new PDO($db_connection);
+            if ($avatar_path !== null) {
+                $sql = 'UPDATE users SET nickname = :new_nickname, avatar = :avatar WHERE user_name = :user_name';
+            } else {
+                $sql = 'UPDATE users SET nickname = :new_nickname WHERE user_name = :user_name';
+            }
+            $query = $db->prepare($sql);
+            $query->bindValue(':new_nickname', $parameters['data_nickname']);
+            if ($avatar_path !== null) {
+                $query->bindValue(':avatar', $avatar_path);
+            }
+            $query->bindValue(':user_name', $_SESSION['user_name']);
+            if ($query->execute()) {
+                $configuration['{FEEDBACK}'] = 'El perfil s\'ha actualitzat correctament';
+            } else {
+                $configuration['{FEEDBACK}'] = '<mark>ERROR: No s\'ha pogut actualitzar el perfil</mark>';
+            }
+        }
+    } else {
+        $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per editar el perfil';
     }
 }
 
@@ -309,6 +398,7 @@ if ($template == 'home' && isset($_SESSION['user_name'])) {
 }
 
 // processament amb la plantilla i generacio de la pagina
-$html = file_get_contents('plantilla_' . $template . '.html', true);
+$template_path = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'private' . DIRECTORY_SEPARATOR . 'plantilla_' . $template . '.html';
+$html = file_get_contents($template_path, true);
 $html = str_replace(array_keys($configuration), array_values($configuration), $html);
 echo $html;
