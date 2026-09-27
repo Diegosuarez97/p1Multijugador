@@ -458,7 +458,7 @@ if ($template == 'home' && isset($_SESSION['user_name'])) {
     $configuration['{REGISTER_ACTION}'] = '';
     $configuration['{ACCOUNT_ACTIONS}'] = <<<'HTML'
             <a class="home-action home-delete" href="/?page=delete">
-                <img class="home-cat" src="/images/register.png" alt="">
+                <img class="home-cat" src="/images/eliminar.png" alt="">
                 <span>Eliminar compte</span>
             </a>
             <a class="home-action home-edit" href="/?page=edit">
