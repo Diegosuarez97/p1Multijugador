@@ -35,9 +35,6 @@ if (isset($_SESSION['old_username'])) {
 $parameters = $_GET;
 $post_parameters = $_POST;
 
-var_dump($parameters);
-var_dump($post_parameters);
-
 if (isset($post_parameters['register'])) {
     $birth_date_text = $post_parameters['birth_date'] ?? '';
     $birth_date = false;
@@ -280,6 +277,58 @@ if (isset($post_parameters['register'])) {
             $template = 'forgot_pass';
             $configuration['{FEEDBACK}'] = '<mark>ERROR: Enllac incorrecte, caducat o ja utilitzat</mark>';
         }
+    }
+} else if (isset($post_parameters['change_password'])) {
+    if (isset($_SESSION['user_name'])) {
+        $current_password = $post_parameters['current_password'] ?? '';
+        $new_password = $post_parameters['new_password'] ?? '';
+        $confirm_new_password = $post_parameters['confirm_new_password'] ?? '';
+
+        if ($current_password === '' || $new_password === '' || $confirm_new_password === '') {
+            $_SESSION['feedback'] = '<mark>ERROR: Omple tots els camps de contrasenya</mark>';
+            header('Location: /?page=edit');
+            exit();
+        } else if ($new_password !== $confirm_new_password) {
+            $_SESSION['feedback'] = '<mark>ERROR: Les contrasenyes noves no coincideixen</mark>';
+            header('Location: /?page=edit');
+            exit();
+        } else if (iconv_strlen($new_password, 'UTF-8') < 12) {
+            $_SESSION['feedback'] = '<mark>ERROR: La nova contrasenya ha de tenir minim 12 caracters</mark>';
+            header('Location: /?page=edit');
+            exit();
+        } else {
+            $db = new PDO($db_connection);
+
+            $sql = 'SELECT user_password FROM users WHERE user_name = :user_name';
+            $query = $db->prepare($sql);
+            $query->bindValue(':user_name', $_SESSION['user_name']);
+            $query->execute();
+            $userRow = $query->fetchObject();
+
+            if (!$userRow || !password_verify($current_password, $userRow->user_password)) {
+                $_SESSION['feedback'] = '<mark>ERROR: La contrasenya actual no es correcta</mark>';
+                header('Location: /?page=edit');
+                exit();
+            }
+
+            $password_hash = password_hash($new_password, PASSWORD_DEFAULT);
+            $sql = 'UPDATE users SET user_password = :user_password WHERE user_name = :user_name';
+            $query = $db->prepare($sql);
+            $query->bindValue(':user_password', $password_hash);
+            $query->bindValue(':user_name', $_SESSION['user_name']);
+
+            if ($query->execute()) {
+                $_SESSION['feedback'] = 'Contrasenya canviada correctament';
+            } else {
+                $_SESSION['feedback'] = '<mark>ERROR: No s\'ha pogut canviar la contrasenya</mark>';
+            }
+            header('Location: /?page=edit');
+            exit();
+        }
+    } else {
+        $_SESSION['feedback'] = 'Cal iniciar sessio per canviar la contrasenya';
+        header('Location: /?page=login');
+        exit();
     }
 } else if (isset($post_parameters['delete'])) {
     if (isset($_SESSION['user_name'])) {
