@@ -13,6 +13,11 @@ $template = 'home';
 $db_connection = 'sqlite:' . dirname(__DIR__) . DIRECTORY_SEPARATOR . 'private' . DIRECTORY_SEPARATOR . 'users.db';
 $configuration = array(
     '{FEEDBACK}' => '',
+    '{ACCOUNT_ACTIONS}' => '',
+    '{REGISTER_ACTION}' => '<a class="home-action home-register" href="{REGISTER_URL}">
+                <img class="home-cat" src="/images/register.png" alt="">
+                <span>Registrarme</span>
+            </a>',
     '{LOGIN_LOGOUT_TEXT}' => 'Identificar-me',
     '{LOGIN_LOGOUT_URL}' => '/?page=login',
     '{METHOD}' => 'POST',
@@ -444,6 +449,17 @@ if (isset($post_parameters['register'])) {
 if ($template == 'home' && isset($_SESSION['user_name'])) {
     $configuration['{LOGIN_LOGOUT_TEXT}'] = 'Tancar sessio';
     $configuration['{LOGIN_LOGOUT_URL}'] = '/?page=logout';
+    $configuration['{REGISTER_ACTION}'] = '';
+    $configuration['{ACCOUNT_ACTIONS}'] = <<<'HTML'
+            <a class="home-action home-delete" href="/?page=delete">
+                <img class="home-cat" src="/images/register.png" alt="">
+                <span>Eliminar compte</span>
+            </a>
+            <a class="home-action home-edit" href="/?page=edit">
+                <img class="home-cat" src="/images/register.png" alt="">
+                <span>Editar perfil</span>
+            </a>
+HTML;
     if ($configuration['{FEEDBACK}'] == '') {
         $configuration['{FEEDBACK}'] = 'Sessio iniciada com <b>' . htmlentities($_SESSION['user_name']) . '</b>';
     }
