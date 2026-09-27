@@ -366,10 +366,16 @@ if (isset($post_parameters['register'])) {
             } else {
                 $filename = $avatar["name"];
                 $tempname = $avatar["tmp_name"];
-                $folder = './uploads/' . $filename;
+                $uploads_directory = __DIR__ . DIRECTORY_SEPARATOR . 'uploads';
+                $folder = $uploads_directory . DIRECTORY_SEPARATOR . $filename;
 
-                if (move_uploaded_file($tempname, $folder)) $avatar_path = '/uploads/' . $filename;
-                else $configuration['{FEEDBACK}'] = '<mark>ERROR: No s\'ha pogut desar l\'avatar</mark>';
+                if (!is_dir($uploads_directory) && !mkdir($uploads_directory, 0755, true)) {
+                    $configuration['{FEEDBACK}'] = '<mark>ERROR: No s\'ha pogut crear la carpeta d\'avatars</mark>';
+                } else if (move_uploaded_file($tempname, $folder)) {
+                    $avatar_path = '/uploads/' . $filename;
+                } else {
+                    $configuration['{FEEDBACK}'] = '<mark>ERROR: No s\'ha pogut desar l\'avatar</mark>';
+                }
             }
         }
 
