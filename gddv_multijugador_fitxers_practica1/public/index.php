@@ -5,7 +5,7 @@
 // de la sessio desades al servidor.
 session_start();
 
-require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../private/vendor/autoload.php';
 $smtp_config = require __DIR__ . '/../private/smtp_config.php';
 
 // valors per defecte
