@@ -337,17 +337,31 @@ if (isset($post_parameters['register'])) {
     }
 } else if (isset($post_parameters['delete'])) {
     if (isset($_SESSION['user_name'])) {
+        $current_password = $post_parameters['current_password'] ?? '';
         $db = new PDO($db_connection);
-        $sql = 'DELETE FROM users WHERE user_name = :user_name';
+
+        $sql = 'SELECT user_password FROM users WHERE user_name = :user_name';
         $query = $db->prepare($sql);
         $query->bindValue(':user_name', $_SESSION['user_name']);
         $query->execute();
-        if ($query->execute()) {
-            $_SESSION = array();
-            session_destroy();
-            $configuration['{FEEDBACK}'] = 'El compte s\'ha eliminat correctament';
+
+        $userRow = $query->fetchObject();
+        if (!$userRow || $current_password === '' || !password_verify($current_password, $userRow->user_password)) {
+            $template = 'delete';
+            $configuration['{FEEDBACK}'] = '<mark>ERROR: La contrasenya actual no es correcta</mark>';
         } else {
-            $configuration['{FEEDBACK}'] = '<mark>ERROR: No s\'ha pogut eliminar el compte</mark>';
+            $sql = 'DELETE FROM users WHERE user_name = :user_name';
+            $query = $db->prepare($sql);
+            $query->bindValue(':user_name', $_SESSION['user_name']);
+
+            if ($query->execute()) {
+                $_SESSION = array();
+                session_destroy();
+                $configuration['{FEEDBACK}'] = 'El compte s\'ha eliminat correctament';
+            } else {
+                $template = 'delete';
+                $configuration['{FEEDBACK}'] = '<mark>ERROR: No s\'ha pogut eliminar el compte</mark>';
+            }
         }
     } else {
         $configuration['{FEEDBACK}'] = 'Cal iniciar sessió per eliminar el compte';
