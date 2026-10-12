@@ -47,6 +47,7 @@ async function joinRoom(token) {
     rtt = Math.round(samples.reduce((a, s) => a + s.rtt, 0) / samples.length);
     offset = samples.reduce((a, s) => a + s.offset, 0) / samples.length;
     $("hud").textContent = `Ping: ${rtt} ms`;
+    room.send("latency", rtt);
   });
   const ping = () => room.send("ping", Date.now());
   ping(); setInterval(ping, 2000);
@@ -84,7 +85,37 @@ function renderLobby(state) {
 }
 
 // ---------- game ----------
-let app, world, players, sprites = {}, anims = {}, started = false;
+let app, world, players, pathPreview, blockedTiles = new Set(), sprites = {}, anims = {}, started = false;
+
+function findPreviewPath(sx, sy, tx, ty) {
+  const key = (x, y) => y * GRID + x;
+  const start = key(sx, sy), target = key(tx, ty);
+  const previous = new Map([[start, null]]);
+  const queue = [[sx, sy]];
+
+  for (let i = 0; i < queue.length; i++) {
+    const [x, y] = queue[i];
+    if (key(x, y) === target) break;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy, next = key(nx, ny);
+      if (nx < 0 || ny < 0 || nx >= GRID || ny >= GRID) continue;
+      if (blockedTiles.has(next) || previous.has(next)) continue;
+      previous.set(next, [x, y]);
+      queue.push([nx, ny]);
+    }
+  }
+
+  if (!previous.has(target)) return null;
+  const path = [];
+  for (let tile = [tx, ty]; tile; tile = previous.get(key(tile[0], tile[1]))) {
+    path.unshift({ x: tile[0], y: tile[1] });
+  }
+  return path;
+}
+
+function clearPathPreview() {
+  pathPreview?.clear();
+}
 
 function onState(state) {
   if (state.phase === "lobby") return renderLobby(state);
@@ -105,20 +136,61 @@ async function startGame(state) {
   const { container: map } = await Assets.load("/assets/map.tmj");
   world.addChild(map);
 
+  blockedTiles = new Set(JSON.parse(room.state.blocked).map(([x, y]) => y * GRID + x));
+  pathPreview = new Graphics();
+  world.addChild(pathPreview);
+
   players = new Container();
   players.sortableChildren = true;
   world.addChild(players);
 
   app.stage.eventMode = "static";
   app.stage.hitArea = app.screen;
-  app.stage.on("pointertap", (e) => {
+  const tileAtPointer = (e) => {
     const l = world.toLocal(e.global);
     const g = utils.toGrid(l.x - TW / 2, l.y + TH / 2);
-    const x = Math.round(g.x), y = Math.round(g.y);
-    if (x >= 0 && y >= 0 && x < GRID && y < GRID) room.send("moveTo", { x, y });
+    return { x: Math.round(g.x), y: Math.round(g.y) };
+  };
+
+  app.stage.on("pointermove", (e) => {
+    clearPathPreview();
+    const player = room.state.players.get(room.sessionId);
+    if (!player || player.moving) return;
+
+    const { x, y } = tileAtPointer(e);
+    if (x < 0 || y < 0 || x >= GRID || y >= GRID || blockedTiles.has(y * GRID + x)) return;
+    let occupied = false;
+    room.state.players.forEach((other, id) => {
+      if (id !== room.sessionId && other.x === x && other.y === y) occupied = true;
+    });
+    if (occupied) return;
+
+    const path = findPreviewPath(player.x, player.y, x, y);
+    if (!path || path.length < 2) return;
+    for (const tile of path.slice(1)) {
+      const center = utils.toScreen(tile.x, tile.y);
+      const cx = center.x + TW / 2, cy = center.y - TH / 2;
+      pathPreview
+        .moveTo(cx, cy - TH * 0.38)
+        .lineTo(cx + TW * 0.38, cy)
+        .lineTo(cx, cy + TH * 0.38)
+        .lineTo(cx - TW * 0.38, cy)
+        .closePath()
+        .fill({ color: 0x55d6ff, alpha: 0.28 })
+        .stroke({ width: 2, color: 0x8be5ff, alpha: 0.9 });
+    }
+  });
+  app.stage.on("pointerout", clearPathPreview);
+  app.stage.on("pointertap", (e) => {
+    const { x, y } = tileAtPointer(e);
+    if (x >= 0 && y >= 0 && x < GRID && y < GRID) {
+      room.send("moveTo", { x, y, clickedAt: serverNow() });
+    }
+    clearPathPreview();
   });
 
   room.onMessage("move", ({ id, path, startTime, msPerTile }) => {
+    if (id === room.sessionId) clearPathPreview();
     anims[id] = { path, startTime, msPerTile };
   });
 
