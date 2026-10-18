@@ -1,26 +1,34 @@
 import { Room } from "colyseus";
-import { schema } from "@colyseus/schema";
+import { Encoder, schema } from "@colyseus/schema";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "./config.js";
 import fs from "fs";
+
+// The initial snapshot includes the collision grid for the 60 x 60 map.
+Encoder.BUFFER_SIZE = Math.max(Encoder.BUFFER_SIZE, 32 * 1024);
 
 const mapData = JSON.parse(
   fs.readFileSync(new URL("../client/public/assets/map.tmj", import.meta.url))
 );
 const GRID = mapData.width;
 const MS_PER_TILE = 300;
-const MIN_PLAYERS = 1;
+const MAX_MOVE_TILES = 3;
+const MIN_PLAYERS = 2;
 const CLICK_ARBITRATION_MS = 250;
 const LOSS_BACKTRACK_RATIO = 0.3;
 const BLOCKED = [];
-const SPAWNS = [[0, 0], [9, 0], [0, 9], [9, 9], [4, 0], [5, 9]];
+const SPAWNS = JSON.parse(mapData.properties?.find((p) => p.name === "spawnPositions")?.value
+  ?? "[[0,0],[9,0],[0,9],[9,9],[4,0],[5,9]]");
+const TROPHY = JSON.parse(mapData.properties?.find((p) => p.name === "trophyPosition")?.value ?? "[30,30]");
 
 mapData.layers.find((l) => l.name === "collision")?.data.forEach((gid, i) => {
   if (gid) BLOCKED.push([i % GRID, Math.floor(i / GRID)]);
 });
 
-const Player = schema({ name: "string", team: "number", x: "number", y: "number", moving: "boolean" });
-const State = schema({ phase: "string", blocked: "string", players: { map: Player } });
+const Player = schema({ name: "string", team: "number", x: "number", y: "number", moving: "boolean", moveRange: "number", ping: "number" });
+const Boost = schema({ x: "number", y: "number" });
+const State = schema({ phase: "string", blocked: "string", players: { map: Player }, boosts: { map: Boost },
+  trophyX: "number", trophyY: "number", trophyAvailable: "boolean", winnerId: "string", winnerName: "string" });
 
 const isBlocked = (x, y) => BLOCKED.some(([bx, by]) => bx === x && by === y);
 
@@ -53,14 +61,27 @@ export class GameRoom extends Room {
     this.setState(new State());
     this.state.phase = "lobby";
     this.state.blocked = JSON.stringify(BLOCKED);
+    [this.state.trophyX, this.state.trophyY] = TROPHY;
+    this.state.trophyAvailable = true;
+    this.state.winnerId = "";
+    this.state.winnerName = "";
     this.destinationClaims = new Map();
     this.clientRtts = new Map();
     this.moveSequence = 0;
+    const boosts = JSON.parse(mapData.properties?.find((p) => p.name === "boostPositions")?.value ?? "[]");
+    boosts.forEach(([x, y], index) => {
+      const boost = new Boost();
+      boost.x = x; boost.y = y;
+      this.state.boosts.set(String(index), boost);
+    });
 
     this.onMessage("ping", (client, t) => client.send("pong", { clientTime: t, serverTime: Date.now() }));
     this.onMessage("latency", (client, rtt) => {
       if (Number.isFinite(rtt) && rtt >= 0 && rtt <= 5000) {
+        const player = this.state.players.get(client.sessionId);
+        if (!player) return;
         this.clientRtts.set(client.sessionId, rtt);
+        player.ping = Math.round(rtt);
       }
     });
 
@@ -82,7 +103,7 @@ export class GameRoom extends Room {
       if (x < 0 || y < 0 || x >= GRID || y >= GRID || isBlocked(x, y)) return;
       if ([...this.state.players.values()].some((o) => o !== p && o.x === x && o.y === y)) return;
       const path = findPath(p.x, p.y, x, y);
-      if (!path || path.length < 2) return;
+      if (!path || path.length < 2 || path.length - 1 > p.moveRange) return;
 
       const destination = `${x},${y}`;
       const now = Date.now();
@@ -145,11 +166,16 @@ export class GameRoom extends Room {
   onJoin(client, options, auth) {
     const p = new Player();
     p.name = auth.username; p.team = 0; p.x = 0; p.y = 0; p.moving = false;
+    p.moveRange = MAX_MOVE_TILES;
+    p.ping = -1;
     this.state.players.set(client.sessionId, p);
   }
 
   onLeave(client) {
     for (const [destination, contest] of this.destinationClaims) {
+      for (const candidate of contest.candidates) {
+        if (candidate.sessionId === client.sessionId) this.stopCandidatePickups(candidate);
+      }
       contest.candidates = contest.candidates.filter((candidate) => candidate.sessionId !== client.sessionId);
       if (contest.winner?.sessionId === client.sessionId) {
         this.cancelDestinationContest(destination, contest);
@@ -164,6 +190,7 @@ export class GameRoom extends Room {
   }
 
   resolveDestinationClaim(destination, contest) {
+    if (this.state.phase !== "playing") return;
     if (this.destinationClaims.get(destination) !== contest) return;
     contest.candidates = contest.candidates.filter(
       (candidate) => this.state.players.get(candidate.sessionId) === candidate.player
@@ -199,6 +226,13 @@ export class GameRoom extends Room {
   startCandidateMove(candidate, path) {
     candidate.path = path;
     candidate.startTime = Date.now();
+    candidate.pickupTimers = path.slice(1).map((tile, index) => this.clock.setTimeout(() => {
+      if (this.state.phase !== "playing" || this.state.players.get(candidate.sessionId) !== candidate.player) return;
+      this.collectBoost(candidate.player, tile.x, tile.y);
+      if (this.state.trophyAvailable && tile.x === this.state.trophyX && tile.y === this.state.trophyY) {
+        this.finishGame(candidate.sessionId, tile.x, tile.y);
+      }
+    }, (index + 1) * MS_PER_TILE));
     this.broadcast("move", {
       id: candidate.sessionId,
       path,
@@ -207,7 +241,37 @@ export class GameRoom extends Room {
     });
   }
 
+  collectBoost(player, x, y) {
+    if (this.state.phase !== "playing") return;
+    for (const [id, boost] of this.state.boosts) {
+      if (boost.x !== x || boost.y !== y) continue;
+      this.state.boosts.delete(id);
+      player.moveRange += 1;
+    }
+  }
+
+  finishGame(sessionId, x, y) {
+    if (this.state.phase !== "playing" || !this.state.trophyAvailable) return;
+    const winner = this.state.players.get(sessionId);
+    if (!winner || x !== this.state.trophyX || y !== this.state.trophyY) return;
+    this.state.phase = "finished";
+    this.state.trophyAvailable = false;
+    this.state.winnerId = sessionId;
+    this.state.winnerName = winner.name;
+    for (const [destination, contest] of [...this.destinationClaims]) {
+      this.cancelDestinationContest(destination, contest);
+    }
+    this.state.players.forEach((player) => { player.moving = false; });
+    winner.x = x; winner.y = y;
+  }
+
+  stopCandidatePickups(candidate) {
+    for (const timer of candidate.pickupTimers ?? []) this.clock.clearTimeout(timer);
+    candidate.pickupTimers = [];
+  }
+
   finishDestinationContest(destination, contest) {
+    if (this.state.phase !== "playing") return;
     if (this.destinationClaims.get(destination) !== contest) return;
     const winner = contest.winner;
     if (!winner || this.state.players.get(winner.sessionId) !== winner.player) {
@@ -223,6 +287,7 @@ export class GameRoom extends Room {
     const now = Date.now();
     for (const loser of contest.candidates) {
       if (loser === winner || this.state.players.get(loser.sessionId) !== loser.player) continue;
+      this.stopCandidatePickups(loser);
 
       const steps = Math.min(
         loser.path.length - 1,
@@ -246,7 +311,7 @@ export class GameRoom extends Room {
 
       const finalTile = rollbackPath[rollbackPath.length - 1] ?? current;
       this.clock.setTimeout(() => {
-        if (this.state.players.get(loser.sessionId) !== loser.player) return;
+        if (this.state.phase !== "playing" || this.state.players.get(loser.sessionId) !== loser.player) return;
         loser.player.x = finalTile.x;
         loser.player.y = finalTile.y;
         loser.player.moving = false;
@@ -258,6 +323,7 @@ export class GameRoom extends Room {
     this.clock.clearTimeout(contest.timer);
     this.destinationClaims.delete(destination);
     for (const candidate of contest.candidates) {
+      this.stopCandidatePickups(candidate);
       if (this.state.players.get(candidate.sessionId) !== candidate.player) continue;
       const elapsed = candidate.startTime ? Date.now() - candidate.startTime : 0;
       const step = Math.min(candidate.path.length - 1, Math.max(0, Math.floor(elapsed / MS_PER_TILE)));

@@ -1,8 +1,9 @@
-import { Application, Container, Graphics, Text, Assets, extensions } from "pixi.js";
+import { Application, Container, Graphics, Sprite, Text, Assets, extensions } from "pixi.js";
 import { tiledMapLoader } from 'pixi-tiledmap';
 import { Client } from "colyseus.js";
-import { API, WS, GRID, TW, TH, COLORS, WORLD_SCALE } from "./utils/constants.js";
+import { API, WS, GRID, TW, TH, COLORS, WORLD_SCALE, MAX_MOVE_TILES } from "./utils/constants.js";
 import * as utils from "./utils/functions.js";
+import { renderTerrainSurfaces, createBoostOrb, addSanctuaryEmblem } from "./gameVisuals.js";
 
 extensions.add(tiledMapLoader);
 
@@ -33,31 +34,73 @@ $("login").onclick = () => auth("login");
 $("register").onclick = () => auth("register");
 
 // ---------- room + latency ----------
-let room, rtt = 0, offset = 0, samples = [];
+let room, authToken, pingInterval, rtt = 0, offset = 0, samples = [];
 const serverNow = () => Date.now() + offset;
 
 async function joinRoom(token) {
+  authToken = token;
   room = await new Client(WS).joinOrCreate("game", { token });
+  const connection = room;
+  samples = []; rtt = 0; offset = 0;
 
   room.onMessage("error", (m) => ($("lobbyInfo").textContent = m));
   room.onMessage("pong", ({ clientTime, serverTime }) => {
+    if (room !== connection) return;
     const now = Date.now();
     samples.push({ rtt: now - clientTime, offset: serverTime + (now - clientTime) / 2 - now });
     samples = samples.slice(-8);
     rtt = Math.round(samples.reduce((a, s) => a + s.rtt, 0) / samples.length);
     offset = samples.reduce((a, s) => a + s.offset, 0) / samples.length;
-    $("hud").textContent = `Ping: ${rtt} ms`;
+    updateHud();
     room.send("latency", rtt);
   });
-  const ping = () => room.send("ping", Date.now());
-  ping(); setInterval(ping, 2000);
-  $("hud").style.display = "block";
+  const ping = () => connection.send("ping", Date.now());
+  ping(); pingInterval = setInterval(ping, 2000);
+  $("hud").style.display = "flex";
 
   buildLobby();
-  room.onStateChange(onState);
-  room.onLeave(() => { show("menu"); location.reload(); });
+  room.onStateChange((state) => { if (room === connection) onState(state); });
+  room.onMessage("move", ({ id, path, startTime, msPerTile }) => {
+    if (room !== connection || connection.state.phase !== "playing") return;
+    if (id === room.sessionId) clearPathPreview();
+    anims[id] = { path, startTime, msPerTile };
+  });
+  room.onLeave(() => { if (room === connection) location.reload(); });
   show("lobby");
 }
+
+async function exitMatch(replay) {
+  $("play-again").disabled = true;
+  $("logout").disabled = true;
+  const previousRoom = room;
+  room = undefined;
+  clearInterval(pingInterval);
+  resetGameView();
+  $("hud").style.display = "none";
+  try {
+    await previousRoom?.leave();
+    if (replay && authToken) {
+      await joinRoom(authToken);
+    } else {
+      authToken = undefined;
+      $("user").value = "";
+      $("pass").value = "";
+      $("msg").textContent = "";
+      show("menu");
+    }
+  } catch (error) {
+    authToken = undefined;
+    $("pass").value = "";
+    show("menu");
+    $("msg").textContent = `No se ha podido entrar en otra partida: ${error.message}`;
+  } finally {
+    $("play-again").disabled = false;
+    $("logout").disabled = false;
+  }
+}
+
+$("play-again").onclick = () => exitMatch(true);
+$("logout").onclick = () => exitMatch(false);
 
 // ---------- lobby ----------
 function buildLobby() {
@@ -86,6 +129,88 @@ function renderLobby(state) {
 
 // ---------- game ----------
 let app, world, players, pathPreview, blockedTiles = new Set(), sprites = {}, anims = {}, started = false;
+let boostLayer, trophyMarker;
+const boostSprites = new Map();
+const pickupEffects = [];
+const moveRange = () => room?.state.players.get(room.sessionId)?.moveRange ?? MAX_MOVE_TILES;
+const pingRows = new Map();
+let pingPanelOpen = false;
+
+function togglePlayerPings() {
+  if (room?.state.phase !== "playing") return;
+  pingPanelOpen = !pingPanelOpen;
+  syncPlayerPings(room.state);
+}
+
+$("ping-toggle").onclick = togglePlayerPings;
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Tab" || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey
+    || room?.state.phase !== "playing") return;
+  if (event.target instanceof HTMLElement &&
+    (event.target.isContentEditable || event.target.closest("input, textarea, select"))) return;
+  event.preventDefault();
+  if (!event.repeat) togglePlayerPings();
+});
+
+function syncPlayerPings(state) {
+  const list = $("player-pings");
+  const playing = state.phase === "playing";
+  if (!playing) pingPanelOpen = false;
+  $("ping-toggle").hidden = !playing;
+  $("ping-toggle").setAttribute("aria-expanded", String(playing && pingPanelOpen));
+  list.hidden = !playing || !pingPanelOpen;
+  if (list.hidden) return;
+  state.players.forEach((player, id) => {
+    let row = pingRows.get(id);
+    if (!row) {
+      row = document.createElement("div");
+      row.className = "player-ping";
+      row.setAttribute("role", "listitem");
+      row.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2" y="16" width="4" height="6" rx="1"/><rect x="8" y="11" width="4" height="11" rx="1"/><rect x="14" y="6" width="4" height="16" rx="1"/><rect x="20" y="2" width="4" height="20" rx="1"/></svg><span class="player-ping-name"></span><span class="player-ping-value"></span>';
+      list.appendChild(row);
+      pingRows.set(id, row);
+    }
+    const ping = player.ping;
+    const color = ping < 0 ? "#c4b795" : ping < 100 ? "#b5d583" : ping < 250 ? "#f1cf76" : "#f49a7e";
+    row.querySelector("svg").style.color = color;
+    row.querySelector(".player-ping-name").textContent = player.name + (id === room.sessionId ? " (tú)" : "");
+    row.querySelector(".player-ping-value").textContent = ping < 0 ? "—" : `${ping} ms`;
+    row.title = ping < 0 ? `${player.name}: esperando medición de ping` : `${player.name}: ${ping} ms de ping`;
+  });
+  for (const [id, row] of pingRows) {
+    if (!state.players.has(id)) { row.remove(); pingRows.delete(id); }
+  }
+}
+
+function updateHud() {
+  const range = moveRange();
+  $("move-count").textContent = range;
+  $("move-info").setAttribute("aria-label", `Puedes avanzar ${range} casillas por movimiento`);
+}
+
+function syncBoosts(state) {
+  if (!boostLayer) return;
+  state.boosts.forEach((boost, id) => {
+    if (boostSprites.has(id)) return;
+    const marker = createBoostOrb();
+    place(marker, boost.x, boost.y);
+    boostLayer.addChild(marker);
+    boostSprites.set(id, marker);
+  });
+  for (const [id, marker] of boostSprites) {
+    if (state.boosts.has(id)) continue;
+    const effect = new Text({ text: "+1", style: {
+      fontSize: 30, fontWeight: "bold", fill: 0xffefb4,
+      stroke: { color: 0x416748, width: 4 },
+    } });
+    effect.anchor.set(.5);
+    effect.position.set(marker.x, marker.y - 40);
+    boostLayer.addChild(effect);
+    pickupEffects.push({ effect, start: performance.now(), y: effect.y });
+    marker.destroy({ children: true });
+    boostSprites.delete(id);
+  }
+}
 
 function findPreviewPath(sx, sy, tx, ty) {
   const key = (x, y) => y * GRID + x;
@@ -117,16 +242,53 @@ function clearPathPreview() {
   pathPreview?.clear();
 }
 
+function resetGameView() {
+  app?.stop();
+  $("game").style.display = "none";
+  if (world) world.visible = false;
+  for (const sprite of Object.values(sprites)) sprite.destroy({ children: true });
+  sprites = {}; anims = {};
+  for (const child of boostLayer?.removeChildren() ?? []) child.destroy({ children: true });
+  boostSprites.clear(); pickupEffects.length = 0;
+  for (const row of pingRows.values()) row.remove();
+  pingRows.clear(); pingPanelOpen = false;
+  clearPathPreview();
+}
+
 function onState(state) {
+  updateHud();
+  syncPlayerPings(state);
   if (state.phase === "lobby") return renderLobby(state);
+  if (state.phase === "finished") {
+    anims = {};
+    clearPathPreview();
+    syncSprites(state);
+    if (trophyMarker) trophyMarker.visible = false;
+    $("hud").style.display = "none";
+    $("winner-name").textContent = `${state.winnerName} ha ganado`;
+    $("result-message").textContent = state.winnerId === room.sessionId
+      ? "¡Has conseguido la copa del laberinto!" : "Ha conseguido la copa del laberinto.";
+    const wasVisible = $("result").classList.contains("active");
+    show("result");
+    if (!wasVisible) $("play-again").focus();
+    return;
+  }
   if (!started) { started = true; startGame(state); }
+  else if (world) {
+    world.visible = true;
+    app.start();
+    show("playing");
+  }
+  $("game").style.display = "block";
+  if (trophyMarker) trophyMarker.visible = state.trophyAvailable;
   syncSprites(state);
+  syncBoosts(state);
 }
 
 async function startGame(state) {
   $("lobby").classList.remove("active");
   app = new Application();
-  await app.init({ resizeTo: window, background: 0x141821, antialias: true });
+  await app.init({ resizeTo: window, backgroundAlpha: 0, antialias: true });
   $("game").appendChild(app.canvas);
 
   world = new Container();
@@ -134,11 +296,28 @@ async function startGame(state) {
   app.stage.addChild(world);
 
   const { container: map } = await Assets.load("/assets/map.tmj");
+  renderTerrainSurfaces(map);
   world.addChild(map);
+  addSanctuaryEmblem(world);
+  const trophyTexture = await Assets.load("/assets/trophy.png");
+  trophyMarker = new Container();
+  trophyMarker.eventMode = "none";
+  trophyMarker.addChild(new Graphics().ellipse(0, 0, 46, 20).fill({ color: 0xe5b54b, alpha: .28 }));
+  const trophy = new Sprite(trophyTexture);
+  trophy.anchor.set(.5, 1);
+  trophy.width = 126;
+  trophy.height = 126 * trophyTexture.height / trophyTexture.width;
+  trophy.y = 5;
+  trophyMarker.addChild(trophy);
+  place(trophyMarker, room.state.trophyX, room.state.trophyY);
+  trophyMarker.visible = room.state.trophyAvailable;
+  world.addChild(trophyMarker);
 
   blockedTiles = new Set(JSON.parse(room.state.blocked).map(([x, y]) => y * GRID + x));
   pathPreview = new Graphics();
   world.addChild(pathPreview);
+  boostLayer = new Container();
+  world.addChild(boostLayer);
 
   players = new Container();
   players.sortableChildren = true;
@@ -154,6 +333,7 @@ async function startGame(state) {
 
   app.stage.on("pointermove", (e) => {
     clearPathPreview();
+    if (room?.state.phase !== "playing") return;
     const player = room.state.players.get(room.sessionId);
     if (!player || player.moving) return;
 
@@ -166,7 +346,7 @@ async function startGame(state) {
     if (occupied) return;
 
     const path = findPreviewPath(player.x, player.y, x, y);
-    if (!path || path.length < 2) return;
+    if (!path || path.length < 2 || path.length - 1 > moveRange()) return;
     for (const tile of path.slice(1)) {
       const center = utils.toScreen(tile.x, tile.y);
       const cx = center.x + TW / 2, cy = center.y - TH / 2;
@@ -176,25 +356,37 @@ async function startGame(state) {
         .lineTo(cx, cy + TH * 0.38)
         .lineTo(cx - TW * 0.38, cy)
         .closePath()
-        .fill({ color: 0x55d6ff, alpha: 0.28 })
-        .stroke({ width: 2, color: 0x8be5ff, alpha: 0.9 });
+        .fill({ color: 0x748a4b, alpha: 0.28 })
+        .stroke({ width: 2, color: 0x506735, alpha: 0.9 });
     }
   });
   app.stage.on("pointerout", clearPathPreview);
   app.stage.on("pointertap", (e) => {
+    if (room?.state.phase !== "playing") return;
     const { x, y } = tileAtPointer(e);
-    if (x >= 0 && y >= 0 && x < GRID && y < GRID) {
+    if (x < 0 || y < 0 || x >= GRID || y >= GRID) return;
+    const player = room.state.players.get(room.sessionId);
+    if (!player || player.moving) return;
+    const path = findPreviewPath(player.x, player.y, x, y);
+    if (path && path.length >= 2 && path.length - 1 <= moveRange()) {
       room.send("moveTo", { x, y, clickedAt: serverNow() });
     }
     clearPathPreview();
   });
 
-  room.onMessage("move", ({ id, path, startTime, msPerTile }) => {
-    if (id === room.sessionId) clearPathPreview();
-    anims[id] = { path, startTime, msPerTile };
-  });
-
   app.ticker.add(() => {
+    const now = performance.now();
+    let index = 0;
+    for (const marker of boostSprites.values()) {
+      marker.orb.y = -40 + Math.sin(now / 450 + index++) * 5;
+    }
+    for (let i = pickupEffects.length - 1; i >= 0; i--) {
+      const { effect, start, y } = pickupEffects[i];
+      const age = (now - start) / 800;
+      effect.y = y - age * 55;
+      effect.alpha = Math.max(0, 1 - age);
+      if (age >= 1) { effect.destroy(); pickupEffects.splice(i, 1); }
+    }
     followPlayer();
     for (const [id, a] of Object.entries(anims)) {
       const s = sprites[id];
@@ -212,9 +404,11 @@ async function startGame(state) {
     }
   });
   syncSprites(room.state);
+  syncBoosts(room.state);
 }
 
 function followPlayer() {
+  if (!room) return;
   const player = sprites[room.sessionId];
   if (!player) return;
 
@@ -237,7 +431,10 @@ function syncSprites(state) {
       const c = new Container();
       c.addChild(new Graphics().ellipse(0, 0, 14, 7).fill({ color: 0x000000, alpha: 0.35 }));
       c.addChild(new Graphics().circle(0, -18, 14).fill(COLORS[p.team - 1]).stroke({ width: 2, color: id === room.sessionId ? 0xffffff : 0x000000 }));
-      const label = new Text({ text: p.name, style: { fontSize: 12, fill: 0xffffff } });
+      const label = new Text({ text: p.name, style: {
+        fontSize: 12, fontWeight: "600", fill: 0x493b2b,
+        stroke: { color: 0xfff3d6, width: 3 },
+      } });
       label.anchor.set(0.5, 1); label.y = -36;
       c.addChild(label);
       players.addChild(c);

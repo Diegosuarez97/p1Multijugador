@@ -30,8 +30,15 @@ app.post("/api/register", (req, res) => {
     const info = db.prepare("INSERT INTO users (username, hash) VALUES (?, ?)")
       .run(username, bcrypt.hashSync(password, 10));
     res.json({ token: token({ id: info.lastInsertRowid, username }), username });
-  } catch {
-    res.status(409).json({ error: "Username already taken" });
+  } catch (error) {
+    if (error.code === "SQLITE_CONSTRAINT_UNIQUE") {
+      return res.status(409).json({ error: "Username already taken" });
+    }
+    console.error("Registration failed:", error);
+    if (error.code === "SQLITE_BUSY" || error.code === "SQLITE_LOCKED") {
+      return res.status(503).json({ error: "Base de datos bloqueada. Guarda o revierte los cambios en DB Browser y cierra la base de datos antes de reintentar." });
+    }
+    res.status(500).json({ error: "No se ha podido crear el usuario. Consulta la terminal del servidor." });
   }
 });
 
