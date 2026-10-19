@@ -5,6 +5,7 @@ import { API, WS, GRID, TW, TH, COLORS, WORLD_SCALE, MAX_MOVE_TILES } from "./ut
 import * as utils from "./utils/functions.js";
 import { characterNameForTeam, loadCharacterAnimations, makeCharacterSprite, setCharacterWalking } from "./utils/characters.js";
 import { renderTerrainSurfaces, createBoostOrb, addSanctuaryEmblem } from "./gameVisuals.js";
+import { cameraScale } from "./utils/camera.js";
 
 extensions.add(tiledMapLoader);
 
@@ -341,7 +342,7 @@ async function startGame(state) {
   $("game").appendChild(app.canvas);
 
   world = new Container();
-  world.scale.set(WORLD_SCALE);
+  world.scale.set(cameraScale(app.screen.width, app.screen.height, WORLD_SCALE));
   app.stage.addChild(world);
 
   const { container: map } = await Assets.load("/assets/map.tmj");
@@ -479,9 +480,11 @@ function followPlayer() {
   const player = sprites[room.sessionId];
   if (!player) return;
 
+  const scale = cameraScale(app.screen.width, app.screen.height, WORLD_SCALE);
+  world.scale.set(scale);
   world.position.set(
-    app.screen.width / 2 - player.position.x * WORLD_SCALE,
-    app.screen.height / 2 - player.position.y * WORLD_SCALE
+    app.screen.width / 2 - player.position.x * scale,
+    app.screen.height / 2 - player.position.y * scale
   );
 }
 
