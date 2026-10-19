@@ -1,105 +1,64 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Harry Popotter</title>
-  <style>
-    body {
-      margin: 0;
-      background: #141821;
-      color: #e8ecf4;
-      font-family: system-ui, sans-serif;
-      overflow: hidden;
-    }
-
-    .screen {
-      position: absolute;
-      inset: 0;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .screen.active {
-      display: flex;
-    }
-
-    input,
-    button {
-      font: inherit;
-      padding: 10px 14px;
-      border-radius: 8px;
-      border: 1px solid #3a4258;
-      background: #1e2431;
-      color: inherit;
-    }
-
-    button {
-      cursor: pointer;
-    }
-
-    button:hover:not(:disabled) {
-      background: #2a3347;
-    }
-
-    button:disabled {
-      opacity: .6;
-      cursor: default;
-    }
-
-    #teams {
-      display: grid;
-      grid-template-columns: repeat(3, 160px);
-      gap: 12px;
-    }
-
-    .team {
-      height: 80px;
-      border-width: 3px;
-    }
-
-    .team.mine {
-      outline: 3px solid #fff;
-    }
-
-    #msg {
-      color: #ff8b8b;
-      min-height: 1.2em;
-    }
-
-    #hud {
-      position: fixed;
-      top: 8px;
-      left: 8px;
-      background: #000a;
-      padding: 6px 10px;
-      border-radius: 6px;
-      display: none;
-      font-size: 14px;
-    }
-  </style>
+  <link rel="stylesheet" href="./src/styles.css">
   <script type="module" src="./src/main.js"></script>
 </head>
 
 <body>
   <div id="menu" class="screen active">
-    <h1>Harry Popotter</h1>
-    <input id="user" placeholder="Username" autocomplete="username">
-    <input id="pass" type="password" placeholder="Password" autocomplete="current-password">
-    <div><button id="login">Log in</button> <button id="register">Register</button></div>
-    <div id="msg"></div>
+    <div class="stone-card">
+      <span class="eyebrow">RUINAS DEL LABERINTO</span>
+      <h1>Harry Popotter</h1>
+      <p class="subtitle">Encuentra tu camino entre la piedra y los jardines.</p>
+      <input id="user" aria-label="Usuario" placeholder="Usuario" autocomplete="username">
+      <input id="pass" aria-label="Contraseña" type="password" placeholder="Contraseña" autocomplete="current-password">
+      <div class="auth-actions"><button id="login">Entrar</button><button id="register">Registrarse</button></div>
+      <div id="msg" role="status"></div>
+    </div>
   </div>
   <div id="lobby" class="screen">
-    <h2>Choose your team</h2>
-    <div id="teams"></div>
-    <div id="lobbyInfo"></div>
+    <div class="stone-card lobby-card">
+      <span class="eyebrow">PREPARA LA EXPEDICIÓN</span>
+      <h2>Elige tu equipo</h2>
+      <div id="teams"></div>
+      <div id="lobbyInfo"></div>
+    </div>
   </div>
   <div id="game"></div>
-  <div id="hud"></div>
+  <div id="result" class="screen" role="dialog" aria-modal="true" aria-labelledby="winner-name">
+    <div class="stone-card">
+      <span class="eyebrow">LA COPA TIENE DUEÑO</span>
+      <img class="result-trophy" src="/assets/trophy.png" alt="Copa dorada del laberinto">
+      <h2 id="winner-name"></h2>
+      <p id="result-message" class="subtitle"></p>
+      <div class="auth-actions">
+        <button id="play-again" type="button">Jugar otra partida</button>
+        <button id="logout" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+  </div>
+  <div id="hud">
+    <button id="ping-toggle" type="button" class="hud-stat" hidden aria-controls="player-pings" aria-expanded="false" aria-keyshortcuts="Tab" title="Mostrar u ocultar el ping de los jugadores (Tab)">
+      <kbd><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12h15m-5-5 5 5-5 5M21 5v14"/></svg>Tab</kbd>
+      <span>Ping</span>
+      <svg class="ping-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m2 4 4 4 4-4"/></svg>
+    </button>
+    <div id="move-info" class="hud-stat" title="Casillas que puedes avanzar por movimiento" aria-label="Puedes avanzar 3 casillas por movimiento">
+      <span id="move-count">3</span>
+      <svg viewBox="0 0 24 28" fill="currentColor" aria-hidden="true">
+        <path d="M7 2c-2 0-3.5 2.7-3.5 5.5S4.7 13 7 13s3.5-2.7 3.5-5.5S9 2 7 2Z"/>
+        <ellipse cx="7" cy="16.5" rx="2.7" ry="2"/>
+        <path d="M17 9c-2 0-3.5 2.7-3.5 5.5S14.7 20 17 20s3.5-2.7 3.5-5.5S19 9 17 9Z"/>
+        <ellipse cx="17" cy="23.5" rx="2.7" ry="2"/>
+      </svg>
+    </div>
+    <div id="player-pings" hidden role="list" aria-label="Ping de los jugadores"></div>
+  </div>
 </body>
 
 </html>
