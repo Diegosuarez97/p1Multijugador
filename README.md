@@ -12,6 +12,10 @@
 1. `cd server`
 2. `npm start`
 
+#### Crear base de dades
+
+Nomes cal executar `npm run create-db`.
+
 ### Client (port 5173)
 
 1. `cd client`
@@ -44,3 +48,7 @@ L'aparta de **tilesets** hauria de quedar aixi:
 ],
 ...
 ```
+
+## Problemes alhora d'executar
+
+Si hi ha qualsevol problema el millor es eliminar la carpeta `node_modules` i el fitxer `package-lock.json`.
