@@ -180,7 +180,7 @@ export class GameRoom extends Room {
       if (contest.winner?.sessionId === client.sessionId) {
         this.cancelDestinationContest(destination, contest);
       } else if (contest.status === "pending" && contest.candidates.length === 0) {
-        this.clock.clearTimeout(contest.timer);
+        this.clearScheduledTimer(contest.timer);
         this.destinationClaims.delete(destination);
       }
     }
@@ -206,21 +206,24 @@ export class GameRoom extends Room {
 
     for (const candidate of contest.candidates) {
       if (candidate === contest.winner) {
-        this.startCandidateMove(candidate, candidate.path);
+        candidate.player.moving = true;
       } else {
         // Losers walk as far as the tile before the contested destination.
         candidate.path = candidate.path.slice(0, -1);
         if (candidate.path.length === 0) candidate.path = [{ x: candidate.player.x, y: candidate.player.y }];
-        this.startCandidateMove(candidate, candidate.path);
+        candidate.player.moving = true;
       }
     }
 
     const winner = contest.winner;
     const duration = (winner.path.length - 1) * MS_PER_TILE;
+    // Resolve the contest before the winner's arrival callbacks (including the trophy pickup)
+    // so every client can show the same impact before any round-ending state change.
     contest.timer = this.clock.setTimeout(
       () => this.finishDestinationContest(destination, contest),
       duration
     );
+    for (const candidate of contest.candidates) this.startCandidateMove(candidate, candidate.path);
   }
 
   startCandidateMove(candidate, path) {
@@ -265,8 +268,13 @@ export class GameRoom extends Room {
     winner.x = x; winner.y = y;
   }
 
+  clearScheduledTimer(timer) {
+    if (typeof timer?.clear === "function") timer.clear();
+    else if (typeof this.clock.clearTimeout === "function") this.clock.clearTimeout(timer);
+  }
+
   stopCandidatePickups(candidate) {
-    for (const timer of candidate.pickupTimers ?? []) this.clock.clearTimeout(timer);
+    for (const timer of candidate.pickupTimers ?? []) this.clearScheduledTimer(timer);
     candidate.pickupTimers = [];
   }
 
@@ -284,14 +292,15 @@ export class GameRoom extends Room {
     winner.player.moving = false;
     this.destinationClaims.delete(destination);
 
-    const now = Date.now();
+    const impactTime = Date.now();
+    const rollbackPlans = [];
     for (const loser of contest.candidates) {
       if (loser === winner || this.state.players.get(loser.sessionId) !== loser.player) continue;
       this.stopCandidatePickups(loser);
 
       const steps = Math.min(
         loser.path.length - 1,
-        Math.max(0, Math.floor((now - loser.startTime) / MS_PER_TILE))
+        Math.max(0, Math.floor((impactTime - loser.startTime) / MS_PER_TILE))
       );
       const current = loser.path[steps];
       loser.player.x = current.x;
@@ -301,15 +310,29 @@ export class GameRoom extends Room {
         ? 0
         : Math.min(steps, Math.max(1, Math.round(steps * LOSS_BACKTRACK_RATIO)));
       const rollbackPath = loser.path.slice(steps - backtrack, steps + 1).reverse();
-      const rollbackStart = Date.now();
+      const finalTile = rollbackPath[rollbackPath.length - 1] ?? current;
+      rollbackPlans.push({ loser, rollbackPath, finalTile });
+    }
+
+    if (rollbackPlans.length > 0) {
+      this.broadcast("duel", {
+        winnerId: winner.sessionId,
+        x: winner.x,
+        y: winner.y,
+        loserIds: rollbackPlans.map(({ loser }) => loser.sessionId),
+        startTime: impactTime,
+        duration: 900,
+      });
+    }
+
+    for (const { loser, rollbackPath, finalTile } of rollbackPlans) {
       this.broadcast("move", {
         id: loser.sessionId,
-        path: rollbackPath.length ? rollbackPath : [current],
-        startTime: rollbackStart,
+        path: rollbackPath.length ? rollbackPath : [finalTile],
+        startTime: impactTime,
         msPerTile: MS_PER_TILE,
       });
 
-      const finalTile = rollbackPath[rollbackPath.length - 1] ?? current;
       this.clock.setTimeout(() => {
         if (this.state.phase !== "playing" || this.state.players.get(loser.sessionId) !== loser.player) return;
         loser.player.x = finalTile.x;
@@ -320,7 +343,7 @@ export class GameRoom extends Room {
   }
 
   cancelDestinationContest(destination, contest) {
-    this.clock.clearTimeout(contest.timer);
+    this.clearScheduledTimer(contest.timer);
     this.destinationClaims.delete(destination);
     for (const candidate of contest.candidates) {
       this.stopCandidatePickups(candidate);

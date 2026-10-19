@@ -3,7 +3,7 @@ import { tiledMapLoader } from 'pixi-tiledmap';
 import { Client } from "colyseus.js";
 import { API, WS, GRID, TW, TH, COLORS, WORLD_SCALE, MAX_MOVE_TILES } from "./utils/constants.js";
 import * as utils from "./utils/functions.js";
-import { characterNameForTeam, loadCharacterAnimations, loadCharacterPreviews, makeCharacterSprite, setCharacterWalking } from "./utils/characters.js";
+import { characterNameForTeam, loadCharacterAnimations, makeCharacterSprite, setCharacterWalking } from "./utils/characters.js";
 import { renderTerrainSurfaces, createBoostOrb, addSanctuaryEmblem } from "./gameVisuals.js";
 
 extensions.add(tiledMapLoader);
@@ -62,9 +62,12 @@ async function joinRoom(token) {
   buildLobby();
   room.onStateChange((state) => { if (room === connection) onState(state); });
   room.onMessage("move", ({ id, path, startTime, msPerTile }) => {
-    if (room !== connection || connection.state.phase !== "playing") return;
+    if (room !== connection || (connection.state.phase !== "playing" && !duelBacktracks.has(id))) return;
     if (id === room.sessionId) clearPathPreview();
     anims[id] = { path, startTime, msPerTile };
+  });
+  room.onMessage("duel", (event) => {
+    if (room === connection) showDuelSpell(event);
   });
   room.onLeave(() => { if (room === connection) location.reload(); });
   show("lobby");
@@ -113,10 +116,11 @@ function buildLobby() {
     b.style.borderColor = color;
     b.style.setProperty("--team-color", color);
     b.onclick = () => room.send("selectTeam", t);
-    const avatar = document.createElement("canvas");
+    const avatar = document.createElement("img");
     avatar.className = "team-avatar";
-    avatar.width = 88; avatar.height = 128;
     avatar.setAttribute("aria-hidden", "true");
+    avatar.alt = "";
+    avatar.src = `/assets/interfaz/${characterNameForTeam(t)}.png`;
     const platform = document.createElement("span");
     platform.className = "team-platform";
     platform.setAttribute("aria-hidden", "true");
@@ -127,14 +131,6 @@ function buildLobby() {
     b.append(avatar, platform, name, owner);
     $("teams").appendChild(b);
   }
-
-  loadCharacterPreviews().then((previews) => {
-    for (let t = 1; t <= 6; t++) {
-      const avatar = $(`team${t}`).querySelector(".team-avatar");
-      const preview = previews[characterNameForTeam(t)];
-      avatar.getContext("2d").drawImage(preview, 0, 0, avatar.width, avatar.height);
-    }
-  }).catch((error) => console.error("Could not load lobby character previews:", error));
 }
 
 function renderLobby(state) {
@@ -157,6 +153,8 @@ let app, world, players, pathPreview, blockedTiles = new Set(), sprites = {}, an
 let boostLayer, trophyMarker;
 const boostSprites = new Map();
 const pickupEffects = [];
+const duelEffects = [];
+const duelBacktracks = new Set();
 const moveRange = () => room?.state.players.get(room.sessionId)?.moveRange ?? MAX_MOVE_TILES;
 const pingRows = new Map();
 let pingPanelOpen = false;
@@ -275,9 +273,33 @@ function resetGameView() {
   sprites = {}; anims = {};
   for (const child of boostLayer?.removeChildren() ?? []) child.destroy({ children: true });
   boostSprites.clear(); pickupEffects.length = 0;
+  for (const { label } of duelEffects) label.destroy();
+  duelEffects.length = 0;
+  duelBacktracks.clear();
   for (const row of pingRows.values()) row.remove();
   pingRows.clear(); pingPanelOpen = false;
   clearPathPreview();
+}
+
+function showDuelSpell({ x, y, loserIds, startTime, duration }) {
+  if (!world || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(startTime)
+    || !Array.isArray(loserIds) || loserIds.length === 0) return;
+
+  loserIds.forEach((id) => duelBacktracks.add(id));
+  const position = tileCenter(x, y);
+  const label = new Text({ text: "¡Expelliarmus!", style: {
+    fontSize: 24, fontWeight: "bold", fill: 0xfff1b8,
+    stroke: { color: 0x572d91, width: 5 },
+  } });
+  label.anchor.set(.5);
+  world.addChild(label);
+  duelEffects.push({
+    label,
+    x: position.x,
+    y: position.y,
+    startTime,
+    duration: Number.isFinite(duration) ? duration : 900,
+  });
 }
 
 function onState(state) {
@@ -285,7 +307,9 @@ function onState(state) {
   syncPlayerPings(state);
   if (state.phase === "lobby") return renderLobby(state);
   if (state.phase === "finished") {
-    anims = {};
+    for (const id of Object.keys(anims)) {
+      if (!duelBacktracks.has(id)) delete anims[id];
+    }
     clearPathPreview();
     syncSprites(state);
     if (trophyMarker) trophyMarker.visible = false;
@@ -413,6 +437,20 @@ async function startGame(state) {
       effect.alpha = Math.max(0, 1 - age);
       if (age >= 1) { effect.destroy(); pickupEffects.splice(i, 1); }
     }
+    for (let i = duelEffects.length - 1; i >= 0; i--) {
+      const spell = duelEffects[i];
+      const elapsed = serverNow() - spell.startTime;
+      if (elapsed < 0) { spell.label.visible = false; continue; }
+      if (elapsed >= spell.duration) {
+        spell.label.destroy();
+        duelEffects.splice(i, 1);
+        continue;
+      }
+
+      spell.label.visible = true;
+      spell.label.position.set(spell.x, spell.y - 112 - Math.min(elapsed / 20, 38));
+      spell.label.alpha = Math.min(1, elapsed / 90) * Math.max(0, 1 - elapsed / spell.duration);
+    }
     followPlayer();
     for (const [id, a] of Object.entries(anims)) {
       const s = sprites[id];
@@ -423,6 +461,7 @@ async function startGame(state) {
         place(s, a.path.at(-1).x, a.path.at(-1).y);
         setCharacterWalking(s.character, 0, 0, false);
         delete anims[id];
+        duelBacktracks.delete(id);
         continue;
       }
       const f = (elapsed % a.msPerTile) / a.msPerTile;
@@ -447,9 +486,14 @@ function followPlayer() {
 }
 
 function place(sprite, gx, gy) {
-  const p = utils.toScreen(gx, gy);
-  sprite.position.set(p.x + TW / 2, p.y - TH / 2);
+  const { x, y } = tileCenter(gx, gy);
+  sprite.position.set(x, y);
   sprite.zIndex = gx + gy;
+}
+
+function tileCenter(gx, gy) {
+  const p = utils.toScreen(gx, gy);
+  return { x: p.x + TW / 2, y: p.y - TH / 2 };
 }
 
 function syncSprites(state) {

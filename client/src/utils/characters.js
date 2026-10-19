@@ -43,51 +43,12 @@ function getOpaqueBounds(context, x, y, width, height) {
   return right < 0 ? null : { left, top, width: right - left + 1, height: bottom - top + 1 };
 }
 
-function keepLargestOpaqueComponent(context, width, height) {
-  const imageData = context.getImageData(0, 0, width, height);
-  const pixels = imageData.data;
-  const visited = new Uint8Array(width * height);
-  let largest = [];
-
-  for (let start = 0; start < width * height; start++) {
-    if (visited[start] || pixels[start * 4 + 3] === 0) continue;
-    const component = [start];
-    visited[start] = 1;
-    for (let index = 0; index < component.length; index++) {
-      const pixel = component[index];
-      const x = pixel % width;
-      const y = Math.floor(pixel / width);
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (dx === 0 && dy === 0) continue;
-          const nx = x + dx;
-          const ny = y + dy;
-          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-          const neighbor = ny * width + nx;
-          if (visited[neighbor] || pixels[neighbor * 4 + 3] === 0) continue;
-          visited[neighbor] = 1;
-          component.push(neighbor);
-        }
-      }
-    }
-    if (component.length > largest.length) largest = component;
-  }
-
-  const keep = new Uint8Array(width * height);
-  largest.forEach((pixel) => { keep[pixel] = 1; });
-  for (let pixel = 0; pixel < width * height; pixel++) {
-    if (!keep[pixel]) pixels[pixel * 4 + 3] = 0;
-  }
-  context.putImageData(imageData, 0, 0);
-}
-
-function makeFrameCanvas(image, sourceX, sourceY, sourceWidth, sourceHeight, primaryOnly = false) {
+function makeFrameCanvas(image, sourceX, sourceY, sourceWidth, sourceHeight) {
   const scan = document.createElement("canvas");
   scan.width = Math.ceil(sourceWidth);
   scan.height = Math.ceil(sourceHeight);
   const scanContext = scan.getContext("2d", { willReadFrequently: true });
   scanContext.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, scan.width, scan.height);
-  if (primaryOnly) keepLargestOpaqueComponent(scanContext, scan.width, scan.height);
   const bounds = getOpaqueBounds(scanContext, 0, 0, scan.width, scan.height);
 
   const canvas = document.createElement("canvas");
@@ -113,23 +74,6 @@ function makeFrameCanvas(image, sourceX, sourceY, sourceWidth, sourceHeight, pri
 
 function makeFrame(image, sourceX, sourceY, sourceWidth, sourceHeight) {
   return Texture.from(makeFrameCanvas(image, sourceX, sourceY, sourceWidth, sourceHeight));
-}
-
-let characterPreviewsPromise;
-
-export function loadCharacterPreviews() {
-  if (!characterPreviewsPromise) {
-    characterPreviewsPromise = Promise.all(Object.entries(CHARACTERS).map(async ([name, sheet]) => {
-      const image = await loadImage(sheet.file);
-      const [top, bottom] = sheet.rows[2];
-      const count = sheet.frames[2];
-      const frame = Math.floor(count / 2);
-      const left = Math.round(frame * image.width / count);
-      const right = Math.round((frame + 1) * image.width / count);
-      return [name, makeFrameCanvas(image, left, top, right - left, bottom - top + 1, true)];
-    })).then((entries) => Object.fromEntries(entries));
-  }
-  return characterPreviewsPromise;
 }
 
 export async function loadCharacterAnimations() {
