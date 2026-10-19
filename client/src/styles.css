@@ -95,8 +95,65 @@ button:disabled {
 #lobbyInfo { color: #77654b; font-size: 14px; text-align: center; }
 
 .team {
-  height: 80px;
+  position: relative;
+  height: 176px;
   border-width: 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  overflow: hidden;
+  padding: 6px 5px 7px;
+  background: linear-gradient(180deg, #fff7e8 0%, #ead8b4 100%);
+}
+
+.team-avatar {
+  position: absolute;
+  z-index: 1;
+  bottom: 36px;
+  width: 88px;
+  height: 128px;
+  image-rendering: pixelated;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 2px #493b2b35);
+}
+
+.team-platform {
+  position: absolute;
+  z-index: 0;
+  bottom: 31px;
+  width: 72px;
+  height: 18px;
+  border: 2px solid var(--team-color);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #fff3d9, #c9b184);
+  box-shadow: 0 3px 4px #493b2b35;
+  pointer-events: none;
+}
+
+.team-name,
+.team-owner {
+  position: relative;
+  z-index: 2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-name {
+  width: 100%;
+  color: #493b2b;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+}
+
+.team-owner {
+  color: #77654b;
+  font-size: 10px;
+  line-height: 13px;
 }
 
 .team.mine {
@@ -205,4 +262,7 @@ button:disabled {
 @media (max-width: 480px) {
   .stone-card { padding: 26px 20px; }
   #teams { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .team { height: 160px; }
+  .team-avatar { bottom: 34px; width: 78px; height: 114px; }
+  .team-platform { bottom: 29px; width: 66px; }
 }

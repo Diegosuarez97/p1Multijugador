@@ -3,7 +3,7 @@ import { tiledMapLoader } from 'pixi-tiledmap';
 import { Client } from "colyseus.js";
 import { API, WS, GRID, TW, TH, COLORS, WORLD_SCALE, MAX_MOVE_TILES } from "./utils/constants.js";
 import * as utils from "./utils/functions.js";
-import { loadCharacterAnimations, makeCharacterSprite, setCharacterWalking } from "./utils/characters.js";
+import { characterNameForTeam, loadCharacterAnimations, loadCharacterPreviews, makeCharacterSprite, setCharacterWalking } from "./utils/characters.js";
 import { renderTerrainSurfaces, createBoostOrb, addSanctuaryEmblem } from "./gameVisuals.js";
 
 extensions.add(tiledMapLoader);
@@ -109,10 +109,32 @@ function buildLobby() {
   for (let t = 1; t <= 6; t++) {
     const b = document.createElement("button");
     b.className = "team"; b.id = `team${t}`;
-    b.style.borderColor = "#" + COLORS[t - 1].toString(16).padStart(6, "0");
+    const color = "#" + COLORS[t - 1].toString(16).padStart(6, "0");
+    b.style.borderColor = color;
+    b.style.setProperty("--team-color", color);
     b.onclick = () => room.send("selectTeam", t);
+    const avatar = document.createElement("canvas");
+    avatar.className = "team-avatar";
+    avatar.width = 88; avatar.height = 128;
+    avatar.setAttribute("aria-hidden", "true");
+    const platform = document.createElement("span");
+    platform.className = "team-platform";
+    platform.setAttribute("aria-hidden", "true");
+    const name = document.createElement("span");
+    name.className = "team-name";
+    const owner = document.createElement("span");
+    owner.className = "team-owner";
+    b.append(avatar, platform, name, owner);
     $("teams").appendChild(b);
   }
+
+  loadCharacterPreviews().then((previews) => {
+    for (let t = 1; t <= 6; t++) {
+      const avatar = $(`team${t}`).querySelector(".team-avatar");
+      const preview = previews[characterNameForTeam(t)];
+      avatar.getContext("2d").drawImage(preview, 0, 0, avatar.width, avatar.height);
+    }
+  }).catch((error) => console.error("Could not load lobby character previews:", error));
 }
 
 function renderLobby(state) {
@@ -120,7 +142,8 @@ function renderLobby(state) {
   state.players.forEach((p, id) => { if (p.team) owners[p.team] = { name: p.name, mine: id === room.sessionId }; });
   for (let t = 1; t <= 6; t++) {
     const b = $(`team${t}`), o = owners[t];
-    b.textContent = o ? o.name : `Team ${t}`;
+    b.querySelector(".team-name").textContent = ["Gryffindor", "Ravenclaw", "Slytherin", "Hufflepuff", "Beauxbatons", "Durmstrang"][t - 1];
+    b.querySelector(".team-owner").textContent = o ? (o.mine ? "Tu personaje" : o.name) : "Disponible";
     b.disabled = !!o && !o.mine;
     b.classList.toggle("mine", !!o?.mine);
   }
