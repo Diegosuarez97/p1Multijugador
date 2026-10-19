@@ -3,6 +3,7 @@ import { tiledMapLoader } from 'pixi-tiledmap';
 import { Client } from "colyseus.js";
 import { API, WS, GRID, TW, TH, COLORS, WORLD_SCALE } from "./utils/constants.js";
 import * as utils from "./utils/functions.js";
+import { loadCharacterAnimations, makeCharacterSprite, setCharacterWalking } from "./utils/characters.js";
 
 extensions.add(tiledMapLoader);
 
@@ -85,7 +86,7 @@ function renderLobby(state) {
 }
 
 // ---------- game ----------
-let app, world, players, pathPreview, blockedTiles = new Set(), sprites = {}, anims = {}, started = false;
+let app, world, players, pathPreview, characterAnimations, blockedTiles = new Set(), sprites = {}, anims = {}, started = false;
 
 function findPreviewPath(sx, sy, tx, ty) {
   const key = (x, y) => y * GRID + x;
@@ -135,6 +136,7 @@ async function startGame(state) {
 
   const { container: map } = await Assets.load("/assets/map.tmj");
   world.addChild(map);
+  characterAnimations = await loadCharacterAnimations();
 
   blockedTiles = new Set(JSON.parse(room.state.blocked).map(([x, y]) => y * GRID + x));
   pathPreview = new Graphics();
@@ -203,11 +205,13 @@ async function startGame(state) {
       const i = Math.floor(elapsed / a.msPerTile);
       if (i >= a.path.length - 1) {
         place(s, a.path.at(-1).x, a.path.at(-1).y);
+        setCharacterWalking(s.character, 0, 0, false);
         delete anims[id];
         continue;
       }
       const f = (elapsed % a.msPerTile) / a.msPerTile;
       const p0 = a.path[i], p1 = a.path[i + 1];
+      setCharacterWalking(s.character, p1.x - p0.x, p1.y - p0.y, true);
       place(s, p0.x + (p1.x - p0.x) * f, p0.y + (p1.y - p0.y) * f);
     }
   });
@@ -236,9 +240,11 @@ function syncSprites(state) {
     if (!sprites[id]) {
       const c = new Container();
       c.addChild(new Graphics().ellipse(0, 0, 14, 7).fill({ color: 0x000000, alpha: 0.35 }));
-      c.addChild(new Graphics().circle(0, -18, 14).fill(COLORS[p.team - 1]).stroke({ width: 2, color: id === room.sessionId ? 0xffffff : 0x000000 }));
+      const character = makeCharacterSprite(characterAnimations, p.team);
+      c.character = character;
+      c.addChild(character);
       const label = new Text({ text: p.name, style: { fontSize: 12, fill: 0xffffff } });
-      label.anchor.set(0.5, 1); label.y = -36;
+      label.anchor.set(0.5, 1); label.y = -132;
       c.addChild(label);
       players.addChild(c);
       sprites[id] = c;
