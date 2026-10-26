@@ -4,7 +4,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "create-db": "node db/create_db.js"
+    "db": "node db/create_db.js"
   },
   "dependencies": {
     "@colyseus/schema": "^3.0.0",

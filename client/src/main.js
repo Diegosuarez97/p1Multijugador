@@ -1,7 +1,7 @@
 import { Application, Container, Graphics, Text, Assets, extensions } from "pixi.js";
 import { tiledMapLoader } from 'pixi-tiledmap';
 import { Client } from "colyseus.js";
-import { API, WS, GRID, TW, TH, COLORS, WORLD_SCALE } from "./utils/constants.js";
+import { API, HOST, GRID, TW, TH, COLORS, WORLD_SCALE } from "./utils/constants.js";
 import * as utils from "./utils/functions.js";
 
 extensions.add(tiledMapLoader);
@@ -37,7 +37,7 @@ let room, rtt = 0, offset = 0, samples = [];
 const serverNow = () => Date.now() + offset;
 
 async function joinRoom(token) {
-  room = await new Client(WS).joinOrCreate("game", { token });
+  room = await new Client(HOST).joinOrCreate("game", { token });
 
   room.onMessage("error", (m) => ($("lobbyInfo").textContent = m));
   room.onMessage("pong", ({ clientTime, serverTime }) => {
