@@ -1,6 +1,12 @@
 import jwt from "jsonwebtoken";
 
-export const createToken = (u) => jwt.sign({ id: u.id, username: u.username }, process.env.JWT_SECRET || "change-me-in-production", { expiresIn: "1h" });
+if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET must be set in production");
+}
+
+export const jwtSecret = process.env.JWT_SECRET || "change-me-in-production";
+
+export const createToken = (u) => jwt.sign({ id: u.id, username: u.username }, jwtSecret, { expiresIn: "1h" });
 
 export function attachUser(req, res, next) {
   const token = req.cookies.token;
@@ -8,7 +14,7 @@ export function attachUser(req, res, next) {
 
   if (token) {
     try {
-      req.user = jwt.verify(token, process.env.JWT_SECRET || "change-me-in-production");
+      req.user = jwt.verify(token, jwtSecret);
       res.locals.user = req.user;
     } catch (err) {
       res.clearCookie("token"); // expired or invalid

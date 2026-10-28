@@ -16,15 +16,20 @@ import { createToken, attachUser, auth } from "./utils.js";
 
 const PORT = process.env.PORT || 2567;
 
-const uploadsDir = path.join(import.meta.dirname, "public", "uploads");
+const uploadsDir = process.env.UPLOAD_DIR
+  ? path.resolve(process.env.UPLOAD_DIR)
+  : path.join(import.meta.dirname, "public", "uploads");
 
 await mkdir(uploadsDir, { recursive: true });
 
 const app = express();
-app.use(cors());
+const allowedOrigins = process.env.CLIENT_ORIGIN?.split(",").map((o) => o.trim()).filter(Boolean);
+app.use(cors(allowedOrigins ? { origin: allowedOrigins } : {}));
 app.use(express.json());
 app.use(cookieParser());
+app.use("/uploads", express.static(uploadsDir));
 app.use(express.static(path.join(import.meta.dirname, "public")));
+app.get("/healthz", (req, res) => res.json({ ok: true }));
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
@@ -80,12 +85,16 @@ const setAuthCookie = (res, t) => res.cookie("token", t, { httpOnly: true, secur
 
 app.post("/api/register", async (req, res) => {
   const { username, password } = req.body ?? {};
+  const wantsJson = req.is("application/json") || req.get("accept")?.includes("application/json");
   if (typeof username !== "string" || typeof password !== "string" || !username || !password) {
     return res.status(400).json({ error: "Username and password required" });
   }
   try {
     const hash = await argon2.hash(password);
     const id = insertUser(username, hash);
+    const token = createToken({ id, username });
+    setAuthCookie(res, token);
+    if (wantsJson) return res.status(201).json({ token });
     res.redirect('/login');
   } catch {
     res.status(409).json({ error: "Username already taken" });

@@ -2,10 +2,11 @@ import { Room } from "colyseus";
 import { schema } from "@colyseus/schema";
 import jwt from "jsonwebtoken";
 import fs from "fs";
+import { parse as parseCookie } from "cookie";
+import { jwtSecret } from "./utils.js";
 
-const mapData = JSON.parse(
-  fs.readFileSync(new URL("../client/public/assets/map.tmj", import.meta.url))
-);
+const mapPath = process.env.MAP_PATH || new URL("../client/public/assets/map.tmj", import.meta.url);
+const mapData = JSON.parse(fs.readFileSync(mapPath, "utf8"));
 const GRID = mapData.width;
 const MS_PER_TILE = 300;
 const MIN_PLAYERS = 1;
@@ -83,9 +84,12 @@ export class GameRoom extends Room {
 
   onAuth(client, options, request) {
     if (this.state.phase !== "lobby") throw new Error("Game already started");
+    // Prefer the token passed by the client (works across origins); fall back to the cookie.
+    const token = typeof options?.token === "string" && options.token
+      ? options.token
+      : parseCookie(request.headers.cookie ?? "").token;
     let user;
-    const cookies = cookie.parse(request.headers.cookie ?? "");
-    try { user = jwt.verify(cookies.token, process.env.JWT_SECRET || "change-me-in-production"); }
+    try { user = jwt.verify(token, jwtSecret); }
     catch { throw new Error("Invalid token"); }
     if (this.clients.some((c) => c.auth?.id === user.id)) throw new Error("Already connected");
     return user;

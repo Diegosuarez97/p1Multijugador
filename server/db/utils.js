@@ -1,9 +1,16 @@
 import Database from "better-sqlite3";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const db = new Database("db/data.db");
+const dbPath = process.env.DB_PATH
+    ? path.resolve(process.env.DB_PATH)
+    : fileURLToPath(new URL("./data.db", import.meta.url));
+
+const db = new Database(dbPath);
 
 export function insertUser(username, hash) {
-    db.prepare("INSERT INTO users (username, hash) VALUES (?, ?)").run(username, hash);
+    const info = db.prepare("INSERT INTO users (username, hash) VALUES (?, ?)").run(username, hash);
+    return Number(info.lastInsertRowid);
 }
 
 export function getUser(username) {
