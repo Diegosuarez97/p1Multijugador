@@ -55,8 +55,17 @@
                 <div class="profile-avatar-field">
                     <label for="data_avatar">Avatar:</label>
                     <div class="profile-avatar-row">
-                        <img class="profile-avatar-preview" src="<%= it.DATA_AVATAR %>" alt="Avatar" width="100" height="100">
-                        <input type="file" id="data_avatar" name="data_avatar" accept="image/*">
+                        <img class="profile-avatar-preview" src="<%= it.DATA_AVATAR %>" alt="Avatar actual" width="100" height="100">
+                        <label class="profile-avatar-picker" for="data_avatar">
+                            <span>Tria una imatge o arrossega-la aquí</span>
+                            <input type="file" id="data_avatar" name="data_avatar" accept="image/*">
+                        </label>
+                        <div class="profile-avatar-upload-preview-container" hidden>
+                            <img class="profile-avatar-preview profile-avatar-upload-preview"
+                                alt="Vista prèvia del nou avatar" width="100" height="100">
+                            <button class="profile-avatar-cancel" type="button" aria-label="Cancel·lar nou avatar"
+                                title="Cancel·lar nou avatar">&times;</button>
+                        </div>
                     </div>
                 </div>
                 <div class="profile-actions">
