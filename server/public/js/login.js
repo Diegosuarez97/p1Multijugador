@@ -22,7 +22,7 @@ function login() {
     }).then(res => res.json()).then(res => {
         console.log(res)
 
-        sessionStorage.setItem("jwt", res.token);
+        location.href = "/";
     }).catch(err => {
         console.log(err);
     });

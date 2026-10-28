@@ -172,3 +172,11 @@ document.addEventListener('DOMContentLoaded', () => {
         animarBotonYEnviar(form, registerButton, 'register');
     });
 });
+
+function logout() {
+    fetch("/api/logout", { method: "POST" }).then(res => res.json()).then(res => {
+        window.location.reload();
+    }).catch(err => {
+        console.log(err);
+    });
+}

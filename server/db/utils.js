@@ -9,3 +9,11 @@ export function insertUser(username, hash) {
 export function getUser(username) {
     return db.prepare("SELECT * FROM users WHERE username = ?").get(username ?? "");
 }
+
+export function updateUserProfile(username, nickname, avatar) {
+    db.prepare(`
+        UPDATE users
+        SET nickname = ?, avatar = ?
+        WHERE username = ?
+    `).run(nickname, avatar, username);
+}

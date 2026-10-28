@@ -5,19 +5,35 @@ import { Server } from "colyseus";
 import { WebSocketTransport } from "@colyseus/ws-transport";
 import { Eta } from "eta";
 import path from "node:path";
+import { mkdir, rm } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import argon2 from "argon2";
 import cookieParser from "cookie-parser";
+import multer from "multer";
 import { GameRoom } from "./GameRoom.js";
-import { insertUser, getUser } from './db/index.js';
+import { insertUser, getUser, updateUserProfile } from './db/utils.js';
 import { createToken, attachUser, auth } from "./utils.js";
 
 const PORT = process.env.PORT || 2567;
+
+const uploadsDir = path.join(import.meta.dirname, "public", "uploads");
+
+await mkdir(uploadsDir, { recursive: true });
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.static(path.join(import.meta.dirname, "public")));
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    // Random name: avoids collisions and ignores the user-supplied filename
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, randomUUID() + ext);
+  },
+});
 
 const eta = new Eta({ views: path.join(import.meta.dirname, "templates") })
 
@@ -37,8 +53,25 @@ app.get("/register", (req, res) => {
   res.send(eta.render("register"));
 });
 
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    cb(null, allowed.includes(file.mimetype));
+  },
+});
+
 app.get("/profile", auth, (req, res) => {
-  res.send(eta.render("profile"));
+  const user = getUser(req.user.username);
+  
+  render(res, "profile", {
+    DATA_USERNAME: req.user.username,
+    DATA_EMAIL: user.email,
+    DATA_BIRTHDATE: user.birth_date,
+    DATA_NICKNAME: user.nickname,
+    DATA_AVATAR: user.avatar || "/icons/default.svg"
+  });
 });
 
 /* API */
@@ -70,9 +103,35 @@ app.post("/api/login", async (req, res) => {
   res.json({ token });
 });
 
+app.put("/api/profile", auth, upload.single("avatar"), async (req, res) => {
+  const nickname = (req.body.nickname || "").trim();
+  const user = getUser(req.user.username);
+
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  const avatar = req.file ? `/uploads/${req.file.filename}` : user.avatar;
+  updateUserProfile(user.username, nickname, avatar);
+
+  if (req.file && user.avatar?.startsWith("/uploads/")) {
+    await rm(path.join(uploadsDir, path.basename(user.avatar)), { force: true });
+  }
+
+  res.json({ ok: true, nickname, avatar });
+});
+
 app.post("/api/logout", (req, res) => {
   res.clearCookie("token");
   res.json({ ok: true });
+});
+
+app.use((req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "API route not found" });
+  }
+
+  res.status(404).send(eta.render("404"));
 });
 
 const server = http.createServer(app);
