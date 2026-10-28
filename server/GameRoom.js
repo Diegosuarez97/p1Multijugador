@@ -1,7 +1,6 @@
 import { Room } from "colyseus";
 import { schema } from "@colyseus/schema";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "./config.js";
 import fs from "fs";
 
 const mapData = JSON.parse(
@@ -82,10 +81,11 @@ export class GameRoom extends Room {
     });
   }
 
-  onAuth(client, options) {
+  onAuth(client, options, request) {
     if (this.state.phase !== "lobby") throw new Error("Game already started");
     let user;
-    try { user = jwt.verify(options?.token, JWT_SECRET); }
+    const cookies = cookie.parse(request.headers.cookie ?? "");
+    try { user = jwt.verify(cookies.token, process.env.JWT_SECRET || "change-me-in-production"); }
     catch { throw new Error("Invalid token"); }
     if (this.clients.some((c) => c.auth?.id === user.id)) throw new Error("Already connected");
     return user;

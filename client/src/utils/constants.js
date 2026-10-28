@@ -1,5 +1,6 @@
-export const API = `http://${location.hostname}:2567/api`;
-export const HOST = `http://${location.hostname}:2567`;
+export const BASE = `http://${location.hostname}:2567`;
+export const API = `${BASE}/api`;
+export const HOST = `${BASE}`;
 export const GRID = 60;
 export const TW = 232;
 export const TH = 110;
