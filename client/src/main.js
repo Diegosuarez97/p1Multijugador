@@ -1,7 +1,7 @@
 import { Application, Container, Graphics, Sprite, Text, Assets, extensions } from "pixi.js";
 import { tiledMapLoader } from 'pixi-tiledmap';
 import { Client } from "colyseus.js";
-import { API, WS, GRID, TW, TH, COLORS, WORLD_SCALE, MAX_MOVE_TILES } from "./utils/constants.js";
+import { API, HOST, GRID, TW, TH, COLORS, WORLD_SCALE, MAX_MOVE_TILES } from "./utils/constants.js";
 import * as utils from "./utils/functions.js";
 import { characterNameForTeam, loadCharacterAnimations, makeCharacterSprite, setCharacterWalking } from "./utils/characters.js";
 import { renderTerrainSurfaces, createBoostOrb, addSanctuaryEmblem } from "./gameVisuals.js";
@@ -41,7 +41,7 @@ const serverNow = () => Date.now() + offset;
 
 async function joinRoom(token) {
   authToken = token;
-  room = await new Client(WS).joinOrCreate("game", { token });
+  room = await new Client(HOST).joinOrCreate("game", { token });
   const connection = room;
   samples = []; rtt = 0; offset = 0;
 

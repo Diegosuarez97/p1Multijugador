@@ -1,15 +1,15 @@
 import { Room } from "colyseus";
 import { Encoder, schema } from "@colyseus/schema";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "./config.js";
 import fs from "fs";
+import { parse as parseCookie } from "cookie";
+import { jwtSecret } from "./utils.js";
 
 // The initial snapshot includes the collision grid for the 60 x 60 map.
 Encoder.BUFFER_SIZE = Math.max(Encoder.BUFFER_SIZE, 32 * 1024);
 
-const mapData = JSON.parse(
-  fs.readFileSync(new URL("../client/public/assets/map.tmj", import.meta.url))
-);
+const mapPath = process.env.MAP_PATH || new URL("../client/public/assets/map.tmj", import.meta.url);
+const mapData = JSON.parse(fs.readFileSync(mapPath, "utf8"));
 const GRID = mapData.width;
 const MS_PER_TILE = 300;
 const MAX_MOVE_TILES = 3;
@@ -154,10 +154,14 @@ export class GameRoom extends Room {
     });
   }
 
-  onAuth(client, options) {
+  onAuth(client, options, request) {
     if (this.state.phase !== "lobby") throw new Error("Game already started");
+    // Prefer the token passed by the client (works across origins); fall back to the cookie.
+    const token = typeof options?.token === "string" && options.token
+      ? options.token
+      : parseCookie(request.headers.cookie ?? "").token;
     let user;
-    try { user = jwt.verify(options?.token, JWT_SECRET); }
+    try { user = jwt.verify(token, jwtSecret); }
     catch { throw new Error("Invalid token"); }
     if (this.clients.some((c) => c.auth?.id === user.id)) throw new Error("Already connected");
     return user;

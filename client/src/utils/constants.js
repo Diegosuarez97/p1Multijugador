@@ -1,5 +1,8 @@
-export const API = `http://${location.hostname}:2567/api`;
-export const WS = `ws://${location.hostname}:2567`;
+// Set at container start (/config.js); falls back to the local dev server.
+const runtimeServerUrl = typeof window !== "undefined" ? window.__SERVER_URL__ : "";
+export const BASE = (runtimeServerUrl || `http://${location.hostname}:2567`).replace(/\/+$/, "");
+export const API = `${BASE}/api`;
+export const HOST = `${BASE}`;
 export const GRID = 60;
 export const TW = 232;
 export const TH = 110;
