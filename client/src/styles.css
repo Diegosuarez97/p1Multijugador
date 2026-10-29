@@ -120,8 +120,18 @@ button:hover:not(:disabled) {
 
 .auth-actions { display: flex; gap: 10px; width: 100%; }
 .auth-actions button { flex: 1; }
-#login { background: #574071; color: #fff8e7; border-color: #49345f; }
-#login:hover { background: #46335e; }
+
+.auth-tabs { display: flex; gap: 10px; width: 100%; }
+.auth-tabs button { flex: 1; }
+.auth-tab { background: #edf3ff; color: inherit; border-color: #9baed0; }
+.auth-tab.active { background: #574071; color: #fff8e7; border-color: #49345f; }
+.auth-tab.active:hover:not(:disabled) { background: #46335e; }
+
+.auth-panel { display: none; flex-direction: column; gap: 12px; width: 100%; }
+.auth-panel.active { display: flex; }
+.auth-submit { background: #574071; color: #fff8e7; border-color: #49345f; }
+.auth-submit:hover:not(:disabled) { background: #46335e; }
+.field-label { align-self: flex-start; font-size: 12px; font-weight: 600; color: #6d5d76; }
 
 button:disabled {
   opacity: .6;

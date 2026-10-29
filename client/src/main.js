@@ -17,13 +17,35 @@ function show(id) {
 }
 
 // ---------- auth ----------
+function showAuthPanel(kind) {
+  const isLogin = kind === "login";
+  for (const [el, active] of [[$("login"), isLogin], [$("register"), !isLogin]]) {
+    el.classList.toggle("active", active);
+    el.setAttribute("aria-selected", String(active));
+  }
+  $("login-panel").classList.toggle("active", isLogin);
+  $("register-panel").classList.toggle("active", !isLogin);
+  $("msg").textContent = "";
+}
+
+$("login").onclick = () => showAuthPanel("login");
+$("register").onclick = () => showAuthPanel("register");
+
 async function auth(kind) {
   $("msg").textContent = "";
+  const payload = kind === "login"
+    ? { username: $("user").value.trim(), password: $("pass").value }
+    : {
+        username: $("reg-user").value.trim(),
+        email: $("reg-email").value.trim(),
+        birthdate: $("reg-birth").value,
+        password: $("reg-pass").value,
+      };
   try {
     const res = await fetch(`${API}/${kind}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: $("user").value.trim(), password: $("pass").value }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
@@ -32,8 +54,8 @@ async function auth(kind) {
     $("msg").textContent = e.message;
   }
 }
-$("login").onclick = () => auth("login");
-$("register").onclick = () => auth("register");
+$("login-panel").onsubmit = (e) => { e.preventDefault(); auth("login"); };
+$("register-panel").onsubmit = (e) => { e.preventDefault(); auth("register"); };
 
 // ---------- room + latency ----------
 let room, authToken, pingInterval, rtt = 0, offset = 0, samples = [];
@@ -90,12 +112,15 @@ async function exitMatch(replay) {
       authToken = undefined;
       $("user").value = "";
       $("pass").value = "";
-      $("msg").textContent = "";
+      $("reg-pass").value = "";
+      showAuthPanel("login");
       show("menu");
     }
   } catch (error) {
     authToken = undefined;
     $("pass").value = "";
+    $("reg-pass").value = "";
+    showAuthPanel("login");
     show("menu");
     $("msg").textContent = `No se ha podido entrar en otra partida: ${error.message}`;
   } finally {

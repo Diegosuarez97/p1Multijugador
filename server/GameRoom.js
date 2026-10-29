@@ -13,7 +13,8 @@ const mapData = JSON.parse(fs.readFileSync(mapPath, "utf8"));
 const GRID = mapData.width;
 const MS_PER_TILE = 300;
 const MAX_MOVE_TILES = 3;
-const MIN_PLAYERS = 2;
+const MIN_PLAYERS = process.env.COOKIE_SECURE === 'production' ? 2 : 1; // for testing, allow single-player start
+const MAX_PLAYERS = Number(process.env.MAX_PLAYERS ?? 6);
 const CLICK_ARBITRATION_MS = 250;
 const LOSS_BACKTRACK_RATIO = 0.3;
 const BLOCKED = [];
@@ -55,7 +56,7 @@ function findPath(sx, sy, tx, ty) {
 }
 
 export class GameRoom extends Room {
-  maxClients = 6;
+  maxClients = MAX_PLAYERS;
 
   onCreate() {
     this.setState(new State());

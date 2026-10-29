@@ -4,8 +4,8 @@ CREATE TABLE IF NOT EXISTS users (
     hash VARCHAR(255),
     email VARCHAR(255),
     birthdate TEXT,
-    nickname VARCHAR(150),
-    avatar VARCHAR(255),
+    nickname VARCHAR(150) default '',
+    avatar VARCHAR(255) default '/icons/default.svg',
     isBanned BOOLEAN DEFAULT 0,
     reason TEXT
 );
