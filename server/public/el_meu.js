@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordInput = form.querySelector('input[name="user_password"]');
     const confirmPasswordInput = document.getElementById('confirm_password');
     const passwordMatchResult = document.getElementById('password-match-result');
-    const birthDateInput = document.getElementById('birth_date');
+    const birthDateInput = document.getElementById('birthdate');
     const ageResult = document.getElementById('age-result');
     const passwordCount = document.getElementById('password-count');
     const passwordProgress = document.getElementById('password-progress');

@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(63),
     hash VARCHAR(255),
     email VARCHAR(255),
-    birth_date TEXT,
+    birthdate TEXT,
     nickname VARCHAR(150),
     avatar VARCHAR(255),
     isBanned BOOLEAN DEFAULT 0,

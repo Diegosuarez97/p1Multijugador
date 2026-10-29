@@ -73,7 +73,7 @@ app.get("/profile", auth, (req, res) => {
   render(res, "profile", {
     DATA_USERNAME: req.user.username,
     DATA_EMAIL: user.email,
-    DATA_BIRTHDATE: user.birth_date,
+    DATA_BIRTHDATE: user.birthdate,
     DATA_NICKNAME: user.nickname,
     DATA_AVATAR: user.avatar || "/icons/default.svg"
   });

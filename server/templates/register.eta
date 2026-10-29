@@ -37,8 +37,8 @@
 
                 <input id="register_email" type="email" name="user_email" autocomplete="email" required />
 
-                <label for="birth_date">Data de naixement</label>
-                <input id="birth_date" type="date" name="birth_date" required />
+                <label for="birthdate">Data de naixement</label>
+                <input id="birthdate" type="date" name="birthdate" required />
                 <p id="age-result" aria-live="polite"></p>
 
                 <label for="register_password">Contrasenya</label>
