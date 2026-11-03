@@ -11,7 +11,9 @@ import argon2 from "argon2";
 import cookieParser from "cookie-parser";
 import multer from "multer";
 import { GameRoom } from "./GameRoom.js";
-import { insertUser, getUser, updateUserProfile } from './db/utils.js';
+import { insertUser, getUser, updateUserProfile, passwordResetStore } from './db/utils.js';
+import { createPasswordRecoveryRouter, recoveryFrontendUrl } from "./passwordRecovery.js";
+import { validateNewPassword } from "./passwordPolicy.js";
 import { createToken, attachUser, auth } from "./utils.js";
 
 const PORT = process.env.PORT || 2567;
@@ -23,6 +25,12 @@ const uploadsDir = process.env.UPLOAD_DIR
 await mkdir(uploadsDir, { recursive: true });
 
 const app = express();
+// Set only for a known reverse-proxy topology, never trust forwarded headers blindly.
+const proxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
+if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 5) {
+  throw new Error("TRUST_PROXY_HOPS must be an integer between 0 and 5");
+}
+app.set("trust proxy", proxyHops);
 const allowedOrigins = process.env.CLIENT_ORIGIN?.split(",").map((o) => o.trim()).filter(Boolean);
 app.use(cors(allowedOrigins ? { origin: allowedOrigins } : {}));
 app.use(express.json());
@@ -59,6 +67,16 @@ app.get("/register", (req, res) => {
   render(res, "register");
 });
 
+app.get("/forgot", (_req, res) => {
+  try {
+    const url = recoveryFrontendUrl();
+    url.hash = "forgot-password";
+    res.redirect(url.toString());
+  } catch {
+    res.status(503).send("La recuperación de contraseña no está configurada. Contacta con el administrador.");
+  }
+});
+
 const upload = multer({
   storage,
   limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
@@ -81,6 +99,8 @@ app.get("/profile", auth, (req, res) => {
 });
 
 /* API */
+
+app.use("/api", createPasswordRecoveryRouter({ store: passwordResetStore }));
 
 const setAuthCookie = (res, t) => res.cookie("token", t, { httpOnly: true, secure: process.env.COOKIE_SECURE === "production", sameSite: "lax", maxAge: 60 * 60 * 1000 });
 
@@ -111,7 +131,6 @@ function readRegisterBody(body = {}) {
 
 app.post("/api/register", async (req, res) => {
   const { username, password, confirm, email, birthdate } = readRegisterBody(req.body);
-  console.log(username, password, confirm, email, birthdate)
 
   const fail = (message, status = 400) => res.status(status).json({ error: message });
 
@@ -125,6 +144,8 @@ app.post("/api/register", async (req, res) => {
   if (confirm !== null && confirm !== password) return fail("Las contraseñas no coinciden.");
 
   try {
+    const passwordError = await validateNewPassword(password);
+    if (passwordError) return fail(passwordError);
     const hash = await argon2.hash(password);
     const id = insertUser(username, hash, email, birthdate);
     const token = createToken({ id, username });

@@ -2,9 +2,12 @@
   "name": "iso-server",
   "type": "module",
   "scripts": {
-    "start": "node --env-file=.env index.js",
-    "dev": "nodemon --exec \"node --env-file=.env\" index.js",
-    "db": "node db/create_db.js"
+    "prestart": "node setup-env.js",
+    "start": "node --env-file=.env --import ./db/create_db.js index.js",
+    "predev": "node setup-env.js",
+    "dev": "nodemon --exec \"node --env-file=.env --import ./db/create_db.js\" index.js",
+    "predb": "node setup-env.js",
+    "db": "node --env-file=.env db/create_db.js"
   },
   "dependencies": {
     "@colyseus/schema": "^3.0.0",

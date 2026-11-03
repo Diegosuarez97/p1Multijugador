@@ -1,12 +1,16 @@
 import Database from "better-sqlite3";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createPasswordResetStore } from "./passwordResets.js";
+// Initialize the schema also when running `node index.js` directly.
+import "./create_db.js";
 
 const dbPath = process.env.DB_PATH
     ? path.resolve(process.env.DB_PATH)
     : fileURLToPath(new URL("./data.db", import.meta.url));
 
 const db = new Database(dbPath);
+export const passwordResetStore = createPasswordResetStore(db);
 
 
 export function insertUser(username, hash, email, birthdate) {

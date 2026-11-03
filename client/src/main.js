@@ -6,6 +6,7 @@ import * as utils from "./utils/functions.js";
 import { characterNameForTeam, loadCharacterAnimations, makeCharacterSprite, setCharacterWalking } from "./utils/characters.js";
 import { renderTerrainSurfaces, createBoostOrb, addSanctuaryEmblem } from "./gameVisuals.js";
 import { cameraScale } from "./utils/camera.js";
+import { initPasswordRecovery } from "./passwordRecovery.js";
 
 extensions.add(tiledMapLoader);
 
@@ -56,6 +57,8 @@ async function auth(kind) {
 }
 $("login-panel").onsubmit = (e) => { e.preventDefault(); auth("login"); };
 $("register-panel").onsubmit = (e) => { e.preventDefault(); auth("register"); };
+
+initPasswordRecovery({ api: API, show, showLogin: () => showAuthPanel("login") });
 
 // ---------- room + latency ----------
 let room, authToken, pingInterval, rtt = 0, offset = 0, samples = [];
@@ -233,8 +236,13 @@ function syncPlayerPings(state) {
 
 function updateHud() {
   const range = moveRange();
-  $("move-count").textContent = range;
-  $("move-info").setAttribute("aria-label", `Puedes avanzar ${range} casillas por movimiento`);
+  const max = room?.state.maxMoveRange || 7;
+  $("move-count").textContent = `${range} / ${max}`;
+  const description = range >= max
+    ? `Alcance máximo: ${max} casillas. Las bolitas quedan disponibles para los demás.`
+    : `Puedes avanzar ${range} casillas por movimiento, hasta un máximo de ${max}.`;
+  $("move-info").setAttribute("aria-label", description);
+  $("move-info").title = description;
 }
 
 function syncBoosts(state) {
@@ -374,7 +382,7 @@ async function startGame(state) {
   renderTerrainSurfaces(map);
   world.addChild(map);
   characterAnimations = await loadCharacterAnimations();
-  addSanctuaryEmblem(world);
+  addSanctuaryEmblem(world, room.state.trophyX, room.state.trophyY);
   const trophyTexture = await Assets.load("/assets/trophy.png");
   trophyMarker = new Container();
   trophyMarker.eventMode = "none";

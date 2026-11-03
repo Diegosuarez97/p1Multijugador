@@ -4,6 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
   <title>El torneo de los magos</title>
   <link rel="stylesheet" href="./src/styles.css">
   <script src="/config.js"></script>
@@ -23,16 +24,41 @@
         <input id="user" aria-label="Usuario" placeholder="Usuario" autocomplete="username" required>
         <input id="pass" aria-label="Contraseña" type="password" placeholder="Contraseña" autocomplete="current-password" required>
         <button id="login-submit" class="auth-submit" type="submit">Entrar</button>
+        <button id="forgot-password-link" class="text-button" type="button">He olvidado mi contraseña</button>
       </form>
       <form id="register-panel" class="auth-panel" role="tabpanel" aria-labelledby="register">
         <input id="reg-user" aria-label="Usuario" placeholder="Usuario" autocomplete="username" minlength="3" maxlength="63" required>
         <input id="reg-email" aria-label="Correo electrónico" type="email" placeholder="Correo electrónico" autocomplete="email" required>
         <label class="field-label" for="reg-birth">Fecha de nacimiento</label>
         <input id="reg-birth" type="date" autocomplete="bday" required>
-        <input id="reg-pass" aria-label="Contraseña" type="password" placeholder="Contraseña" autocomplete="new-password" required>
+        <p class="subtitle">Usa al menos 6 caracteres. Puedes elegir una frase con palabras y espacios. Evita contraseñas comunes o ya expuestas.</p>
+        <input id="reg-pass" aria-label="Contraseña" type="password" placeholder="Contraseña" autocomplete="new-password" minlength="6" required>
         <button id="register-submit" class="auth-submit" type="submit">Registrarse</button>
       </form>
       <div id="msg" role="status"></div>
+    </div>
+  </div>
+  <div id="recovery" class="screen">
+    <div class="stone-card">
+      <h2>Recupera tu contraseña</h2>
+      <form id="forgot-password-form" class="recovery-form">
+        <p class="subtitle">Introduce el correo con el que te registraste.</p>
+        <label class="field-label" for="recovery-email">Correo electrónico</label>
+        <input id="recovery-email" type="email" autocomplete="email" maxlength="254" required>
+        <button class="auth-submit" type="submit">Enviar enlace</button>
+      </form>
+      <form id="reset-password-form" class="recovery-form" hidden>
+        <p class="subtitle">El enlace es de un solo uso y caduca en 30 minutos.</p>
+        <p class="subtitle">Puedes elegir una frase con palabras y espacios. Evita contraseñas comunes o ya expuestas.</p>
+        <label class="field-label" for="recovery-password">Nueva contraseña (mínimo 6 caracteres)</label>
+        <input id="recovery-password" type="password" autocomplete="new-password" minlength="6" required>
+        <label class="field-label" for="recovery-confirm">Repite la contraseña</label>
+        <input id="recovery-confirm" type="password" autocomplete="new-password" minlength="6" required>
+        <button class="auth-submit" type="submit">Guardar contraseña</button>
+      </form>
+      <p id="recovery-message" class="subtitle" role="status" aria-live="polite"></p>
+      <button id="request-another-reset" class="text-button" type="button">Solicitar otro enlace</button>
+      <button id="recovery-back" type="button">Volver a iniciar sesión</button>
     </div>
   </div>
   <div id="lobby" class="screen">
@@ -62,8 +88,8 @@
       <span>Ping</span>
       <svg class="ping-chevron" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m2 4 4 4 4-4"/></svg>
     </button>
-    <div id="move-info" class="hud-stat" title="Casillas que puedes avanzar por movimiento" aria-label="Puedes avanzar 3 casillas por movimiento">
-      <span id="move-count">3</span>
+    <div id="move-info" class="hud-stat" title="Casillas por movimiento; máximo 7" aria-label="Puedes avanzar 3 casillas por movimiento, hasta un máximo de 7">
+      <span id="move-count">3 / 7</span>
       <svg viewBox="0 0 24 28" fill="currentColor" aria-hidden="true">
         <path d="M7 2c-2 0-3.5 2.7-3.5 5.5S4.7 13 7 13s3.5-2.7 3.5-5.5S9 2 7 2Z"/>
         <ellipse cx="7" cy="16.5" rx="2.7" ry="2"/>

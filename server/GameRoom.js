@@ -12,7 +12,8 @@ const mapPath = process.env.MAP_PATH || new URL("../client/public/assets/map.tmj
 const mapData = JSON.parse(fs.readFileSync(mapPath, "utf8"));
 const GRID = mapData.width;
 const MS_PER_TILE = 300;
-const MAX_MOVE_TILES = 3;
+const INITIAL_MOVE_RANGE = 3;
+const MAX_MOVE_RANGE = 7;
 const MIN_PLAYERS = process.env.COOKIE_SECURE === 'production' ? 2 : 1; // for testing, allow single-player start
 const MAX_PLAYERS = Number(process.env.MAX_PLAYERS ?? 6);
 const CLICK_ARBITRATION_MS = 250;
@@ -29,7 +30,7 @@ mapData.layers.find((l) => l.name === "collision")?.data.forEach((gid, i) => {
 const Player = schema({ name: "string", team: "number", x: "number", y: "number", moving: "boolean", moveRange: "number", ping: "number" });
 const Boost = schema({ x: "number", y: "number" });
 const State = schema({ phase: "string", blocked: "string", players: { map: Player }, boosts: { map: Boost },
-  trophyX: "number", trophyY: "number", trophyAvailable: "boolean", winnerId: "string", winnerName: "string" });
+  trophyX: "number", trophyY: "number", trophyAvailable: "boolean", winnerId: "string", winnerName: "string", maxMoveRange: "number" });
 
 const isBlocked = (x, y) => BLOCKED.some(([bx, by]) => bx === x && by === y);
 
@@ -61,6 +62,7 @@ export class GameRoom extends Room {
   onCreate() {
     this.setState(new State());
     this.state.phase = "lobby";
+    this.state.maxMoveRange = MAX_MOVE_RANGE;
     this.state.blocked = JSON.stringify(BLOCKED);
     [this.state.trophyX, this.state.trophyY] = TROPHY;
     this.state.trophyAvailable = true;
@@ -104,7 +106,7 @@ export class GameRoom extends Room {
       if (x < 0 || y < 0 || x >= GRID || y >= GRID || isBlocked(x, y)) return;
       if ([...this.state.players.values()].some((o) => o !== p && o.x === x && o.y === y)) return;
       const path = findPath(p.x, p.y, x, y);
-      if (!path || path.length < 2 || path.length - 1 > p.moveRange) return;
+      if (!path || path.length < 2 || path.length - 1 > Math.min(p.moveRange, MAX_MOVE_RANGE)) return;
 
       const destination = `${x},${y}`;
       const now = Date.now();
@@ -171,7 +173,7 @@ export class GameRoom extends Room {
   onJoin(client, options, auth) {
     const p = new Player();
     p.name = auth.username; p.team = 0; p.x = 0; p.y = 0; p.moving = false;
-    p.moveRange = MAX_MOVE_TILES;
+    p.moveRange = INITIAL_MOVE_RANGE;
     p.ping = -1;
     this.state.players.set(client.sessionId, p);
   }
@@ -250,11 +252,12 @@ export class GameRoom extends Room {
   }
 
   collectBoost(player, x, y) {
-    if (this.state.phase !== "playing") return;
+    if (this.state.phase !== "playing" || player.moveRange >= MAX_MOVE_RANGE) return;
     for (const [id, boost] of this.state.boosts) {
       if (boost.x !== x || boost.y !== y) continue;
       this.state.boosts.delete(id);
-      player.moveRange += 1;
+      player.moveRange = Math.min(player.moveRange + 1, MAX_MOVE_RANGE);
+      return;
     }
   }
 

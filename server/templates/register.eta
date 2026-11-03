@@ -44,14 +44,14 @@
                 <label for="register_password">Contrasenya</label>
                 <div class="password-guidance" id="password-guidance">
                     <strong>Consell:</strong> tria una frase llarga que puguis recordar fàcilment.
-                    Com a mínim, 12 caràcters. Pots combinar paraules i espais.
+                    Com a mínim, 6 caràcters. Pots combinar paraules i espais.
                 </div>
 
-                <input id="register_password" type="password" name="user_password" minlength="12" autocomplete="new-password"
+                <input id="register_password" type="password" name="user_password" minlength="6" autocomplete="new-password"
                     aria-describedby="password-guidance password-count" required />
                 <label for="password-progress">Longitud de la contrasenya</label>
-                <progress id="password-progress" max="12" value="0">0</progress>
-                <p id="password-count" aria-live="polite">0 caràcters (mínim 12)</p>
+                <progress id="password-progress" max="6" value="0">0</progress>
+                <p id="password-count" aria-live="polite">0 caràcters (mínim 6)</p>
                 <label for="confirm_password">Repeteix la contrasenya</label>
                 <input id="confirm_password" type="password" name="confirm_password" autocomplete="new-password"
                     aria-describedby="password-match-result" required />

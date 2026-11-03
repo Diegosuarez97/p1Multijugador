@@ -129,6 +129,10 @@ button:hover:not(:disabled) {
 
 .auth-panel { display: none; flex-direction: column; gap: 12px; width: 100%; }
 .auth-panel.active { display: flex; }
+.recovery-form { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.recovery-form[hidden] { display: none; }
+.text-button { background: transparent; border-color: transparent; text-decoration: underline; font-size: 13px; }
+#recovery-message { overflow-wrap: anywhere; }
 .auth-submit { background: #574071; color: #fff8e7; border-color: #49345f; }
 .auth-submit:hover:not(:disabled) { background: #46335e; }
 .field-label { align-self: flex-start; font-size: 12px; font-weight: 600; color: #6d5d76; }

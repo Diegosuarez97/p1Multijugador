@@ -15,7 +15,7 @@ Isometric multiplayer game: PixiJS client + Express/Colyseus server. Two indepen
 Requires Node ≥ 20.11 (`import.meta.dirname`, `--env-file` used by the scripts).
 
 ```bash
-cd server && npm install && cp -n .env.example .env   # .env is gitignored and required
+cd server && npm install
 cd server && npm run dev      # nodemon, loads .env
 cd server && npm start        # plain start, loads .env
 cd server && npm run db       # create SQLite schema if missing (idempotent)
@@ -23,6 +23,7 @@ cd client && npm install && npm run dev
 ```
 
 - Start the server before the client; login goes through it. Local client fallback is `http://<host>:2567`; production reads `window.__SERVER_URL__` from `/config.js`, which the client container generates from `SERVER_URL`.
+- `npm start`, `npm run dev`, and `npm run db` create a missing local `.env` from `.env.example`, preserving existing files. Start/dev also initialize SQLite tables. Automatic `.env` creation is disabled when `NODE_ENV=production`.
 - `DB_PATH`, `UPLOAD_DIR`, and `MAP_PATH` override the defaults (`server/db/data.db`, `server/public/uploads`, `client/public/assets/map.tmj`). Relative env paths resolve from the server cwd.
 - `NODE_ENV=production` makes a missing `JWT_SECRET` a startup error.
 - No test suite. Verification is `cd client && npm run build`, or the full stack with `docker compose up --build`; `npm run dev` is the way to exercise the server directly.

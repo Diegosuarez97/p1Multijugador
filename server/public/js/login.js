@@ -20,7 +20,6 @@ function login() {
             password: password
         })
     }).then(res => res.json()).then(res => {
-        console.log(res)
 
         location.href = "/";
     }).catch(err => {
