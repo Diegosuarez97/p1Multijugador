@@ -16,6 +16,8 @@
     <img class="screen-title home-title" src="/assets/interfaz/tittle.png" alt="El torneo de los magos">
     <div class="stone-card home-card">
       <p class="subtitle">Encuentra tu camino entre la piedra y los jardines.</p>
+      <label class="field-label" for="room-id">ID de sala (opcional)</label>
+      <input id="room-id" type="text" placeholder="Conectar a una sala existente" autocomplete="off" spellcheck="false">
       <div class="auth-tabs" role="tablist" aria-label="Acceso">
         <button id="login" class="auth-tab active" type="button" role="tab" aria-selected="true" aria-controls="login-panel">Entrar</button>
         <button id="register" class="auth-tab" type="button" role="tab" aria-selected="false" aria-controls="register-panel">Registrarse</button>
@@ -23,7 +25,7 @@
       <form id="login-panel" class="auth-panel active" role="tabpanel" aria-labelledby="login">
         <input id="user" aria-label="Usuario" placeholder="Usuario" autocomplete="username" required>
         <input id="pass" aria-label="Contraseña" type="password" placeholder="Contraseña" autocomplete="current-password" required>
-        <button id="login-submit" class="auth-submit" type="submit">Entrar</button>
+        <button id="login-submit" class="auth-submit" type="submit">Iniciar sesión</button>
         <button id="forgot-password-link" class="text-button" type="button">He olvidado mi contraseña</button>
       </form>
       <form id="register-panel" class="auth-panel" role="tabpanel" aria-labelledby="register">
@@ -33,7 +35,7 @@
         <input id="reg-birth" type="date" autocomplete="bday" required>
         <p class="subtitle">Usa al menos 6 caracteres. Puedes elegir una frase con palabras y espacios. Evita contraseñas comunes o ya expuestas.</p>
         <input id="reg-pass" aria-label="Contraseña" type="password" placeholder="Contraseña" autocomplete="new-password" minlength="6" required>
-        <button id="register-submit" class="auth-submit" type="submit">Registrarse</button>
+        <button id="register-submit" class="auth-submit" type="submit">Crear cuenta</button>
       </form>
       <div id="msg" role="status"></div>
     </div>
@@ -66,6 +68,10 @@
     <div class="stone-card lobby-card selection-card">
       <h2>Elige tu equipo</h2>
       <div id="teams"></div>
+      <div class="room-id-actions">
+        <div id="roomId"></div>
+        <button id="copyRoomId" class="auth-submit" type="button">Copiar ID</button>
+      </div>
       <div id="lobbyInfo"></div>
     </div>
   </div>

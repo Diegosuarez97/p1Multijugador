@@ -106,6 +106,8 @@ button {
 input { box-sizing: border-box; width: 100%; }
 input::placeholder { color: #687895; }
 input:focus-visible, button:focus-visible { outline: 3px solid #80629c; outline-offset: 3px; }
+.field-label[for="room-id"] { color: #49345f; font-size: 15px; font-weight: 700; }
+#room-id { border: 2px solid #c49a54; background: #fff8e7; font-weight: 600; }
 
 button {
   cursor: pointer;
@@ -150,7 +152,9 @@ button:disabled {
 }
 
 .lobby-card { width: min(600px, calc(100vw - 32px)); }
-#lobbyInfo { color: #6d5d76; font-size: 14px; text-align: center; }
+#roomId, #lobbyInfo { color: #6d5d76; font-size: 14px; text-align: center; }
+#roomId { padding: 8px 12px; border: 1px solid #c49a54; border-radius: 8px; background: #fff8e7; color: #49345f; font-size: 16px; font-weight: 700; }
+.room-id-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }
 
 .team {
   position: relative;

@@ -1,5 +1,10 @@
 {
   "name": "iso-client",
+  "version": "1.0.0",
+  "description": "Client for the isometric game",
+  "engines": {
+    "node": ">=20.11"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite --host",

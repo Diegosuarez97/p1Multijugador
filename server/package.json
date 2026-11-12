@@ -1,5 +1,10 @@
 {
   "name": "iso-server",
+  "version": "1.0.0",
+  "description": "Server for the isometric game",
+  "engines": {
+    "node": ">=20.11"
+  },
   "type": "module",
   "scripts": {
     "prestart": "node setup-env.js",

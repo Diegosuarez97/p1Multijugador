@@ -50,7 +50,7 @@ async function auth(kind) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
-    await joinRoom(data.token);
+    await joinRoom(data.token, $("room-id").value.trim());
   } catch (e) {
     $("msg").textContent = e.message;
   }
@@ -64,9 +64,23 @@ initPasswordRecovery({ api: API, show, showLogin: () => showAuthPanel("login") }
 let room, authToken, pingInterval, rtt = 0, offset = 0, samples = [];
 const serverNow = () => Date.now() + offset;
 
-async function joinRoom(token) {
+$("copyRoomId").onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(room.roomId);
+    $("copyRoomId").textContent = "Copiado";
+  } catch {
+    $("copyRoomId").textContent = "No se pudo copiar";
+  }
+};
+
+async function joinRoom(token, roomId) {
   authToken = token;
-  room = await new Client(HOST).joinOrCreate("game", { token });
+  const client = new Client(HOST);
+  room = roomId
+    ? await client.joinById(roomId, { token })
+    : await client.create("game", { token });
+  $("roomId").textContent = `ID de sala: ${room.roomId}`;
+  $("copyRoomId").textContent = "Copiar ID";
   const connection = room;
   samples = []; rtt = 0; offset = 0;
 
