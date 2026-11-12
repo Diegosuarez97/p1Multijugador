@@ -681,6 +681,19 @@ body.home-page::after {
     padding: 2rem 2.6rem 2.2rem;
 }
 
+.banned-card {
+    width: min(38rem, calc(100vw - 2rem));
+    padding: 2rem 2.6rem;
+}
+
+.banned-reason {
+    margin: 0;
+    color: #f0eaff;
+    line-height: 1.55;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
 .delete-card > header {
     width: min(29rem, calc(100% - 7rem));
     margin: 0 7rem 1rem 0;
@@ -1130,6 +1143,11 @@ body.home-page::after {
     }
 
     .delete-card {
+        width: 100%;
+        padding: 1.35rem 1.1rem 1.5rem;
+    }
+
+    .banned-card {
         width: 100%;
         padding: 1.35rem 1.1rem 1.5rem;
     }

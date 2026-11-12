@@ -1,9 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import jwt from "jsonwebtoken";
 import { GameRoom } from "../GameRoom.js";
+import { createToken, jwtSecret } from "../utils.js";
 import { straight, trophy, trophyNeighbors, trophyCrossing, property, directions, isOpen } from "./map-helpers.js";
 
 const { x: X, y: Y } = straight;
+
+test("banned login tokens cannot join a game room", () => {
+  const token = createToken({ id: 1, username: "banned", isBanned: true });
+  assert.equal(jwt.verify(token, jwtSecret).isBanned, true);
+  const room = { state: { phase: "lobby" }, clients: [] };
+  assert.throws(() => GameRoom.prototype.onAuth.call(room, {}, { token }, { headers: {} }), /Banned account/);
+});
 
 function harness() {
   let now = 0, sequence = 0;

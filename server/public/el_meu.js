@@ -55,6 +55,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    const deleteForm = document.getElementById('delete-form');
+    if (deleteForm) {
+        const deleteButton = deleteForm.querySelector('[name="delete"]');
+        const feedback = document.querySelector('.auth-feedback');
+        deleteForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            feedback.textContent = '';
+            deleteButton.disabled = true;
+            try {
+                const response = await fetch('/api/delete', {
+                    method: 'POST',
+                    headers: { Accept: 'application/json' },
+                    body: new URLSearchParams(new FormData(deleteForm)),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'No s\'ha pogut eliminar el compte.');
+                window.location.assign('/');
+            } catch (error) {
+                feedback.textContent = error.message;
+                deleteButton.disabled = false;
+            }
+        });
+        return;
+    }
+
     const registerButton = document.querySelector('[name="register"]');
     const loginButton = document.querySelector('[name="login"]');
 

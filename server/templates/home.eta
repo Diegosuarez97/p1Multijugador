@@ -21,6 +21,9 @@
         <header class="home-header">
             <img class="home-logo" src="/images/home.png" alt="Dos gats davant d'un ordinador">
             <h1>La meva pàgina</h1>
+            <% if (it.user) { %>
+                <p>Sessió iniciada com <strong><%= it.user.username %></strong></p>
+            <% } %>
             <% /* <div class="home-feedback">feedback</div> */ %>
         </header>
         <section class="home-actions">

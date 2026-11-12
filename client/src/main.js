@@ -46,10 +46,21 @@ async function auth(kind) {
   try {
     const res = await fetch(`${API}/${kind}`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     const data = await res.json();
+    if (data.banned) {
+      $("msg").textContent = data.reason
+        ? `Tu cuenta está bloqueada. Motivo: ${data.reason}`
+        : "Tu cuenta está bloqueada.";
+      return;
+    }
+    if (data.redirect) {
+      window.location.assign(new URL(data.redirect, API).href);
+      return;
+    }
     if (!res.ok) throw new Error(data.error);
     await joinRoom(data.token, $("room-id").value.trim());
   } catch (e) {

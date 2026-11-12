@@ -20,8 +20,11 @@ function login() {
             username: username,
             password: password
         })
-    }).then(res => {
-        if (res.ok) {
+    }).then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (data.redirect) {
+            location.href = data.redirect;
+        } else if (res.ok) {
             location.href = "/";
         } else {
             $feedback.textContent = res.status === 401

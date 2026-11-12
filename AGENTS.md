@@ -49,3 +49,5 @@ cd client && npm install && npm run dev
 - Layers must be named `ground` and `collision` (collision drives server blocking). The tmj tileset entry must be `{"firstgid":1,"source":"map_tiles.tsx"}`; tile art is external PNGs in `_tiles/`.
 - Map is 60×60: the server derives `GRID` from the tmj width, while `client/src/utils/constants.js` hardcodes `GRID = 60`. Keep them in sync when resizing.
 - Keep `tiled/map.tmx` and `client/public/assets/map.tmx` (plus `map_tiles.tsx`) in sync; they are duplicate copies today.
+
+> ALWAYS use the ponytail skill.

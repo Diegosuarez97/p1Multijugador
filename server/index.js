@@ -11,7 +11,7 @@ import argon2 from "argon2";
 import cookieParser from "cookie-parser";
 import multer from "multer";
 import { GameRoom } from "./GameRoom.js";
-import { insertUser, getUser, updateUserProfile, passwordResetStore } from './db/utils.js';
+import { insertUser, getUser, updateUserProfile, deleteUser, passwordResetStore } from './db/utils.js';
 import { createPasswordRecoveryRouter, recoveryFrontendUrl } from "./passwordRecovery.js";
 import { validateNewPassword } from "./passwordPolicy.js";
 import { createToken, attachUser, auth } from "./utils.js";
@@ -32,7 +32,7 @@ if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 5) {
 }
 app.set("trust proxy", proxyHops);
 const allowedOrigins = process.env.CLIENT_ORIGIN?.split(",").map((o) => o.trim()).filter(Boolean);
-app.use(cors(allowedOrigins ? { origin: allowedOrigins } : {}));
+app.use(cors(allowedOrigins ? { origin: allowedOrigins, credentials: true } : {}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -55,16 +55,90 @@ const eta = new Eta({ views: path.join(import.meta.dirname, "templates") })
 const render = (res, view, data = {}) => res.send(eta.render(view, { ...res.locals, ...data }));
 
 app.use(attachUser);
+app.use((req, res, next) => {
+  const user = req.user && getUser(req.user.username);
+  if (!user?.isBanned || req.path === "/banned") return next();
+  if (req.path.startsWith("/api/")) {
+    if (allowedOrigins?.includes(req.get("origin"))) res.clearCookie("token");
+    return res.status(403).json({
+      error: "Aquest compte està bloquejat.", banned: true, reason: user.reason, redirect: "/banned",
+    });
+  }
+  return res.redirect("/banned");
+});
+
 app.get("/", (req, res) => {
   render(res, "home");
 });
 
 app.get("/login", (req, res) => {
-  res.send(eta.render("login"));
+  render(res, "login");
 });
 
 app.get("/register", (req, res) => {
   render(res, "register");
+});
+
+app.get("/delete", auth, (req, res) => {
+  if (!getUser(req.user.username)) {
+    res.clearCookie("token");
+    return res.redirect("/login");
+  }
+  render(res, "delete");
+});
+
+app.post("/api/delete", (req, res, next) => {
+  if (!req.user) return res.status(401).json({ error: "La sessió no és vàlida. Torna a iniciar sessió." });
+  next();
+}, async (req, res) => {
+  const user = getUser(req.user.username);
+  if (!user) {
+    res.clearCookie("token");
+    return res.status(401).json({ error: "La sessió no és vàlida. Torna a iniciar sessió." });
+  }
+
+  const showError = (status, message) => {
+    return res.status(status).json({ error: message });
+  };
+  const password = req.body?.current_password;
+  if (typeof password !== "string" || !password) {
+    return showError(400, "Introdueix la contrasenya actual.");
+  }
+
+  let matches;
+  try { matches = await argon2.verify(user.hash, password); }
+  catch (error) {
+    console.error("Account deletion password check failed:", error);
+    return showError(500, "No s'ha pogut verificar la contrasenya. Torna-ho a provar.");
+  }
+  if (!matches) return showError(401, "La contrasenya no és correcta.");
+
+  try {
+    if (!deleteUser(user.id)) {
+      res.clearCookie("token");
+      return res.status(401).json({ error: "La sessió no és vàlida. Torna a iniciar sessió." });
+    }
+  } catch (error) {
+    console.error("Account deletion failed:", error);
+    return showError(500, "No s'ha pogut eliminar el compte. Torna-ho a provar.");
+  }
+
+  res.clearCookie("token");
+  if (user.avatar?.startsWith("/uploads/")) {
+    try { await rm(path.join(uploadsDir, path.basename(user.avatar)), { force: true }); }
+    catch (error) { console.error("Could not remove deleted account avatar:", error); }
+  }
+  return res.sendStatus(204);
+});
+
+app.get("/banned", auth, (req, res) => {
+  const user = getUser(req.user.username);
+  if (!user) {
+    res.clearCookie("token");
+    return res.redirect("/login");
+  }
+  if (!user.isBanned) return res.redirect("/");
+  render(res, "banned", { DATA_REASON: user.reason });
 });
 
 app.get("/forgot", (_req, res) => {
@@ -168,6 +242,13 @@ app.post("/api/login", async (req, res) => {
   const user = getUser(username);
   if (!user || !(await argon2.verify(user.hash, String(password ?? "")))) {
     return res.status(401).json({ error: "Wrong username or password" });
+  }
+  if (user.isBanned) {
+    if (allowedOrigins?.includes(req.get("origin"))) res.clearCookie("token");
+    else setAuthCookie(res, createToken({ id: user.id, username: user.username, isBanned: true }));
+    return res.status(403).json({
+      error: "Aquest compte està bloquejat.", banned: true, reason: user.reason, redirect: "/banned",
+    });
   }
   const token = createToken({ id: user.id, username: user.username });
   setAuthCookie(res, token);

@@ -29,9 +29,9 @@
                     <h2>Inici de sessió</h2>
                 </header>
                 <label for="login_username">Nom d'usuari</label>
-                <input id="login_username" type="text" name="user_name" required value="miki" />
+                <input id="login_username" type="text" name="user_name" required />
                 <label for="login_password">Contrasenya</label>
-                <input id="login_password" type="password" name="user_password" required value="patata" />
+                <input id="login_password" type="password" name="user_password" required />
                 <p class="forgot-link"><a href="/forgot">He oblidat la contrasenya</a></p>
             </form>
             <button class="animated-submit login-submit" name="login" onclick=login()>

@@ -29,3 +29,10 @@ export function updateUserProfile(username, nickname, avatar) {
         WHERE username = ?
     `).run(nickname, avatar, username);
 }
+
+export function deleteUser(id) {
+    return db.transaction((userId) => {
+        db.prepare("DELETE FROM password_resets WHERE user_id = ?").run(userId);
+        return db.prepare("DELETE FROM users WHERE id = ?").run(userId).changes;
+    }).immediate(id);
+}
