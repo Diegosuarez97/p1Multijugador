@@ -20,7 +20,7 @@
     <main class="auth-shell login-shell">
         <header class="auth-heading">
             <h1><span class="auth-title-outline" aria-hidden="true">La meva pàgina</span><a href="/">La meva pàgina</a></h1>
-            <div class="auth-feedback"></div>
+            <div class="auth-feedback" role="alert"></div>
         </header>
         <section class="auth-form-section">
             <form id="login-form" class="auth-card login-card">
