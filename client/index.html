@@ -16,8 +16,6 @@
     <img class="screen-title home-title" src="/assets/interfaz/tittle.png" alt="El torneo de los magos">
     <div class="stone-card home-card">
       <p class="subtitle">Encuentra tu camino entre la piedra y los jardines.</p>
-      <label class="field-label" for="room-id">ID de sala (opcional)</label>
-      <input id="room-id" type="text" placeholder="Conectar a una sala existente" autocomplete="off" spellcheck="false">
       <div class="auth-tabs" role="tablist" aria-label="Acceso">
         <button id="login" class="auth-tab active" type="button" role="tab" aria-selected="true" aria-controls="login-panel">Entrar</button>
         <button id="register" class="auth-tab" type="button" role="tab" aria-selected="false" aria-controls="register-panel">Registrarse</button>
@@ -37,6 +35,8 @@
         <input id="reg-pass" aria-label="Contraseña" type="password" placeholder="Contraseña" autocomplete="new-password" minlength="6" required>
         <button id="register-submit" class="auth-submit" type="submit">Crear cuenta</button>
       </form>
+      <label class="field-label" for="room-id">ID de sala (opcional)</label>
+      <input id="room-id" name="roomId" type="text" placeholder="Conectar a una sala existente" autocomplete="off" spellcheck="false">
       <div id="msg" role="status"></div>
     </div>
   </div>

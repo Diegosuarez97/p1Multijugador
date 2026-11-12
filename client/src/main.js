@@ -6,6 +6,7 @@ import * as utils from "./utils/functions.js";
 import { characterNameForTeam, loadCharacterAnimations, makeCharacterSprite, setCharacterWalking } from "./utils/characters.js";
 import { renderTerrainSurfaces, createBoostOrb, addSanctuaryEmblem } from "./gameVisuals.js";
 import { cameraScale } from "./utils/camera.js";
+import { findReachableTiles } from "./utils/movement.js";
 import { initPasswordRecovery } from "./passwordRecovery.js";
 
 extensions.add(tiledMapLoader);
@@ -192,7 +193,7 @@ function renderLobby(state) {
 
 // ---------- game ----------
 let characterAnimations;
-let app, world, players, pathPreview, blockedTiles = new Set(), sprites = {}, anims = {}, started = false;
+let app, world, players, rangePreview, pathPreview, blockedTiles = new Set(), sprites = {}, anims = {}, started = false;
 let boostLayer, trophyMarker;
 const boostSprites = new Map();
 const pickupEffects = [];
@@ -313,6 +314,35 @@ function clearPathPreview() {
   pathPreview?.clear();
 }
 
+function drawTilePreview(graphics, tiles, fillAlpha, strokeAlpha, strokeWidth) {
+  for (const { x, y } of tiles) {
+    const center = tileCenter(x, y);
+    graphics
+      .moveTo(center.x, center.y - TH * 0.38)
+      .lineTo(center.x + TW * 0.38, center.y)
+      .lineTo(center.x, center.y + TH * 0.38)
+      .lineTo(center.x - TW * 0.38, center.y)
+      .closePath()
+      .fill({ color: 0x748a4b, alpha: fillAlpha })
+      .stroke({ width: strokeWidth, color: 0x506735, alpha: strokeAlpha });
+  }
+}
+
+function updateMovementRangePreview(state) {
+  rangePreview?.clear();
+  if (!rangePreview || state.phase !== "playing") return;
+  const player = state.players.get(room.sessionId);
+  if (!player || player.moving) return;
+
+  const occupied = new Set();
+  state.players.forEach((other, id) => {
+    if (id !== room.sessionId) occupied.add(other.y * GRID + other.x);
+  });
+  const tiles = findReachableTiles(player.x, player.y, moveRange(), GRID, blockedTiles)
+    .filter(({ x, y }) => !occupied.has(y * GRID + x));
+  drawTilePreview(rangePreview, tiles, 0.24, 0.8, 1.5);
+}
+
 function resetGameView() {
   app?.stop();
   $("game").style.display = "none";
@@ -327,6 +357,7 @@ function resetGameView() {
   for (const row of pingRows.values()) row.remove();
   pingRows.clear(); pingPanelOpen = false;
   clearPathPreview();
+  rangePreview?.clear();
 }
 
 function showDuelSpell({ x, y, loserIds, startTime, duration }) {
@@ -353,6 +384,7 @@ function showDuelSpell({ x, y, loserIds, startTime, duration }) {
 function onState(state) {
   updateHud();
   syncPlayerPings(state);
+  updateMovementRangePreview(state);
   if (state.phase === "lobby") return renderLobby(state);
   if (state.phase === "finished") {
     for (const id of Object.keys(anims)) {
@@ -395,6 +427,9 @@ async function startGame(state) {
   const { container: map } = await Assets.load("/assets/map.tmj");
   renderTerrainSurfaces(map);
   world.addChild(map);
+  rangePreview = new Graphics();
+  pathPreview = new Graphics();
+  world.addChild(rangePreview, pathPreview);
   characterAnimations = await loadCharacterAnimations();
   addSanctuaryEmblem(world, room.state.trophyX, room.state.trophyY);
   const trophyTexture = await Assets.load("/assets/trophy.png");
@@ -412,8 +447,6 @@ async function startGame(state) {
   world.addChild(trophyMarker);
 
   blockedTiles = new Set(JSON.parse(room.state.blocked).map(([x, y]) => y * GRID + x));
-  pathPreview = new Graphics();
-  world.addChild(pathPreview);
   boostLayer = new Container();
   world.addChild(boostLayer);
 
@@ -445,18 +478,7 @@ async function startGame(state) {
 
     const path = findPreviewPath(player.x, player.y, x, y);
     if (!path || path.length < 2 || path.length - 1 > moveRange()) return;
-    for (const tile of path.slice(1)) {
-      const center = utils.toScreen(tile.x, tile.y);
-      const cx = center.x + TW / 2, cy = center.y - TH / 2;
-      pathPreview
-        .moveTo(cx, cy - TH * 0.38)
-        .lineTo(cx + TW * 0.38, cy)
-        .lineTo(cx, cy + TH * 0.38)
-        .lineTo(cx - TW * 0.38, cy)
-        .closePath()
-        .fill({ color: 0x748a4b, alpha: 0.28 })
-        .stroke({ width: 2, color: 0x506735, alpha: 0.9 });
-    }
+    drawTilePreview(pathPreview, path.slice(1), 0.28, 0.9, 2);
   });
   app.stage.on("pointerout", clearPathPreview);
   app.stage.on("pointertap", (e) => {
@@ -520,6 +542,7 @@ async function startGame(state) {
   });
   syncSprites(room.state);
   syncBoosts(room.state);
+  updateMovementRangePreview(room.state);
 }
 
 function followPlayer() {
