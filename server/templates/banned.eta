@@ -9,6 +9,7 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="mvp.css">
     <link rel="stylesheet" href="el_meu.css">
+    <script src="/vendor/axios/axios.min.js"></script>
 </head>
 
 <body class="auth-page banned-page">
@@ -23,7 +24,7 @@
                 </header>
                 <p class="banned-reason"><strong>Motiu:</strong> <%= it.DATA_REASON || "No s'ha indicat cap motiu." %></p>
                 <button class="profile-secondary-action banned-logout" type="button"
-                    onclick="fetch('/api/logout', { method: 'POST' }).then(() => location.assign('/login'))">
+                    onclick="axios.post('/api/logout').then(() => location.assign('/login'))">
                     Tancar sessió
                 </button>
             </article>

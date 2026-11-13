@@ -1,3 +1,5 @@
+import axios from "axios";
+
 export function initPasswordRecovery({ api, show, showLogin }) {
   const $ = (id) => document.getElementById(id);
   const forgotForm = $("forgot-password-form");
@@ -48,16 +50,11 @@ export function initPasswordRecovery({ api, show, showLogin }) {
     button.disabled = true;
     message.textContent = "Enviando…";
     try {
-      const response = await fetch(`${api}/${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await response.json();
-      message.textContent = response.ok ? data.message : data.error || "No se ha podido completar la solicitud.";
-      if (response.ok) success?.();
-    } catch {
-      message.textContent = "No se ha podido conectar con el servidor. Inténtalo más tarde.";
+      const { data } = await axios.post(`${api}/${endpoint}`, payload);
+      message.textContent = data.message;
+      success?.();
+    } catch (error) {
+      message.textContent = error.response?.data?.error || "No se ha podido conectar con el servidor. Inténtalo más tarde.";
     } finally {
       button.disabled = false;
     }

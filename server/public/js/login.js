@@ -11,28 +11,22 @@ function login() {
         return;
     }
 
-    fetch("/api/login", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            username: username,
-            password: password
-        })
-    }).then(async res => {
-        const data = await res.json().catch(() => ({}));
+    axios.post("/api/login", { username: username, password: password }).then(({ data }) => {
         if (data.redirect) {
             location.href = data.redirect;
-        } else if (res.ok) {
-            location.href = "/";
         } else {
-            $feedback.textContent = res.status === 401
-                ? "Nom d'usuari o contrasenya incorrectes."
-                : "No s'ha pogut iniciar sessió. Torna-ho a provar.";
+            location.href = "/";
         }
     }).catch(err => {
-        $feedback.textContent = "No s'ha pogut connectar amb el servidor. Torna-ho a provar.";
-        console.log(err);
+        const data = err.response?.data;
+        if (data?.redirect) {
+            location.href = data.redirect;
+        } else if (err.response?.status === 401) {
+            $feedback.textContent = "Nom d'usuari o contrasenya incorrectes.";
+        } else if (err.response) {
+            $feedback.textContent = "No s'ha pogut iniciar sessió. Torna-ho a provar.";
+        } else {
+            $feedback.textContent = "No s'ha pogut connectar amb el servidor. Torna-ho a provar.";
+        }
     });
 }

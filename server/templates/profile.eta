@@ -18,6 +18,7 @@
     <meta property="og:description" content="Una plantilla web molt basica per no comencar des de zero">
     <meta property="og:image" content="og_image.png">
     <!-- per afegir interactivitat a la pagina -->
+    <script src="/vendor/axios/axios.min.js"></script>
     <script defer src="js/profile.js"></script>
 </head>
 

@@ -6,15 +6,10 @@ async function changePassword() {
         confirm_new_password: value("confirm_new_password"),
     };
 
-    const res = await fetch("/api/password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-    }).catch(() => null);
-    const data = await res?.json().catch(() => ({}));
-
-    if (!res?.ok) {
-        alert(data?.error || "No s'ha pogut canviar la contrasenya.");
+    try {
+        await axios.post("/api/password", body);
+    } catch (error) {
+        alert(error.response?.data?.error || "No s'ha pogut canviar la contrasenya.");
         return;
     }
     for (const id of ["current_password", "new_password", "confirm_new_password"]) {
@@ -90,7 +85,7 @@ function updateProfile() {
 
     console.log(data)
 
-    fetch("/api/profile", { method: "PUT", body: data }).then(res => res.json()).then(res => {
+    axios.put("/api/profile", data).then(res => {
         console.log(res);
     }).catch(err => {
         console.log(err);

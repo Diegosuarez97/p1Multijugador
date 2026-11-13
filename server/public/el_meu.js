@@ -64,16 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
             feedback.textContent = '';
             deleteButton.disabled = true;
             try {
-                const response = await fetch('/api/delete', {
-                    method: 'POST',
-                    headers: { Accept: 'application/json' },
-                    body: new URLSearchParams(new FormData(deleteForm)),
-                });
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok) throw new Error(data.error || 'No s\'ha pogut eliminar el compte.');
+                await axios.post('/api/delete', new URLSearchParams(new FormData(deleteForm)));
                 window.location.assign('/');
             } catch (error) {
-                feedback.textContent = error.message;
+                feedback.textContent = error.response?.data?.error || 'No s\'ha pogut eliminar el compte.';
                 deleteButton.disabled = false;
             }
         });
@@ -168,16 +162,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const feedback = document.querySelector('.auth-feedback');
         feedback.textContent = '';
         try {
-            const res = await fetch(form.action, {
-                method: 'POST',
-                headers: { Accept: 'application/json' },
-                body: new URLSearchParams(new FormData(form)),
-            });
-            const data = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(data.error || 'No s\'ha pogut crear el compte.');
-            window.location.assign('/login');
+            await axios.post(form.action, new URLSearchParams(new FormData(form)));
+            window.location.assign('/');
         } catch (err) {
-            feedback.textContent = err.message;
+            feedback.textContent = err.response?.data?.error || 'No s\'ha pogut crear el compte.';
             registerButton.disabled = false;
             registerButton.classList.remove('cat-running');
         }
@@ -185,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function logout() {
-    fetch("/api/logout", { method: "POST" }).then(res => res.json()).then(res => {
+    axios.post("/api/logout").then(() => {
         window.location.reload();
     }).catch(err => {
         console.log(err);

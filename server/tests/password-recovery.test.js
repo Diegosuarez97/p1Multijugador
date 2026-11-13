@@ -8,6 +8,7 @@ import argon2 from "argon2";
 import { createPasswordResetStore } from "../db/passwordResets.js";
 import { createPasswordRecoveryRouter } from "../passwordRecovery.js";
 import { sendRecoveryEmail } from "../email.js";
+import axios from "axios";
 import { validateNewPassword } from "../passwordPolicy.js";
 
 const OLD = "original-password-123";
@@ -24,6 +25,7 @@ const waitFor = async (predicate) => {
 };
 
 async function fixture(t, sendEmail, validatePassword) {
+  t.mock.method(axios, "get", async () => ({ status: 200, data: "" }));
   const db = new Database(":memory:");
   db.exec(readFileSync(new URL("../db/create_db.sql", import.meta.url), "utf8"));
   db.prepare("INSERT INTO users (id, username, email, hash) VALUES (1, ?, ?, ?)")
@@ -36,9 +38,7 @@ async function fixture(t, sendEmail, validatePassword) {
   app.use("/api", createPasswordRecoveryRouter({
     store, now: () => time, frontendUrl: () => new URL("http://localhost:5173/"),
     sendEmail: sendEmail || (async (mail) => { mails.push(mail); }),
-    validatePassword: validatePassword || ((password) => validateNewPassword(password, {
-      fetchImpl: async () => ({ ok: true, text: async () => "" }),
-    })),
+    validatePassword: validatePassword || validateNewPassword,
     logger: { error: (...args) => logs.push(args.join(" ")) },
   }));
   const server = app.listen(0, "127.0.0.1");
@@ -203,23 +203,22 @@ test("Brevo adapter uses the official REST endpoint, server key and verified sen
   process.env.BREVO_API_KEY = "test-placeholder-key";
   process.env.BREVO_SENDER_EMAIL = "sender@example.com";
   process.env.BREVO_SENDER_NAME = "Test game";
-  const mock = t.mock.method(globalThis, "fetch", async () => ({ ok: true, status: 201 }));
+  const mock = t.mock.method(axios, "post", async () => ({ status: 201 }));
   await sendRecoveryEmail({ recipientEmail: EMAIL, resetUrl: "https://example.com/#reset-password=test" });
-  const [url, options] = mock.mock.calls[0].arguments;
+  const [url, body, options] = mock.mock.calls[0].arguments;
   assert.equal(url, "https://api.brevo.com/v3/smtp/email");
   assert.equal(options.headers['api-key'], "test-placeholder-key");
-  const body = JSON.parse(options.body);
   assert.deepEqual(body.sender, { email: "sender@example.com", name: "Test game" });
   assert.deepEqual(body.to, [{ email: EMAIL }]);
   assert.ok(body.subject);
   assert.ok(body.textContent.includes("https://example.com/#reset-password=test"));
-  mock.mock.mockImplementation(async () => ({ ok: false, status: 401 }));
+  mock.mock.mockImplementation(async () => ({ status: 401 }));
   await assert.rejects(sendRecoveryEmail({ recipientEmail: EMAIL, resetUrl: "test" }), /^Error: BREVO_HTTP_401$/);
   mock.mock.mockImplementation(async () => {
-    throw new TypeError("sensitive network details", { cause: { code: "EACCES" } });
+    throw Object.assign(new Error("sensitive network details"), { code: "EACCES" });
   });
   await assert.rejects(sendRecoveryEmail({ recipientEmail: EMAIL, resetUrl: "test" }), /^Error: BREVO_NETWORK_EACCES$/);
-  mock.mock.mockImplementation(async () => { throw new DOMException("sensitive timeout", "TimeoutError"); });
+  mock.mock.mockImplementation(async () => { throw Object.assign(new Error("sensitive timeout"), { code: "ECONNABORTED" }); });
   await assert.rejects(sendRecoveryEmail({ recipientEmail: EMAIL, resetUrl: "test" }), /^Error: BREVO_TIMEOUT$/);
   delete process.env.BREVO_API_KEY;
   await assert.rejects(sendRecoveryEmail({ recipientEmail: EMAIL, resetUrl: "test" }), /BREVO_NOT_CONFIGURED/);

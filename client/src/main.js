@@ -44,27 +44,19 @@ async function auth(kind) {
         password: $("reg-pass").value,
       };
   try {
-    const res = await fetch(`${API}/${kind}`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.banned) {
+    const { data } = await axios.post(`${API}/${kind}`, payload, { withCredentials: true });
+    await joinRoom(data.token, $("room-id").value.trim());
+  } catch (e) {
+    const data = e.response?.data;
+    if (data?.banned) {
       $("msg").textContent = data.reason
         ? `Tu cuenta está bloqueada. Motivo: ${data.reason}`
         : "Tu cuenta está bloqueada.";
-      return;
-    }
-    if (data.redirect) {
+    } else if (data?.redirect) {
       window.location.assign(new URL(data.redirect, API).href);
-      return;
+    } else {
+      $("msg").textContent = data?.error || e.message;
     }
-    if (!res.ok) throw new Error(data.error);
-    await joinRoom(data.token, $("room-id").value.trim());
-  } catch (e) {
-    $("msg").textContent = e.message;
   }
 }
 $("login-panel").onsubmit = (e) => { e.preventDefault(); auth("login"); };

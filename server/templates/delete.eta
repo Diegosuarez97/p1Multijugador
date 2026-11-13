@@ -9,6 +9,7 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="mvp.css">
     <link rel="stylesheet" href="el_meu.css">
+    <script src="/vendor/axios/axios.min.js"></script>
     <script defer src="el_meu.js"></script>
 </head>
 

@@ -1,3 +1,5 @@
+import axios from "axios";
+
 // Backend only: never expose these settings through Vite or /config.js.
 export async function sendRecoveryEmail({ recipientEmail, resetUrl }) {
   const { BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME } = process.env;
@@ -7,30 +9,24 @@ export async function sendRecoveryEmail({ recipientEmail, resetUrl }) {
 
   let response;
   try {
-    response = await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: {
-        "api-key": BREVO_API_KEY,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      signal: AbortSignal.timeout(10000),
-      body: JSON.stringify({
-        sender: { email: BREVO_SENDER_EMAIL, name: BREVO_SENDER_NAME },
-        to: [{ email: recipientEmail }],
-        subject: "Recupera tu contraseña — El torneo de los magos",
-        textContent: `Para cambiar tu contraseña, abre este enlace:\n${resetUrl}\n\n` +
-          "El enlace caduca en 30 minutos y solo se puede usar una vez. " +
-          "Si no lo has solicitado, ignora este mensaje.",
-      }),
+    response = await axios.post("https://api.brevo.com/v3/smtp/email", {
+      sender: { email: BREVO_SENDER_EMAIL, name: BREVO_SENDER_NAME },
+      to: [{ email: recipientEmail }],
+      subject: "Recupera tu contraseña — El torneo de los magos",
+      textContent: `Para cambiar tu contraseña, abre este enlace:\n${resetUrl}\n\n` +
+        "El enlace caduca en 30 minutos y solo se puede usar una vez. " +
+        "Si no lo has solicitado, ignora este mensaje.",
+    }, {
+      headers: { "api-key": BREVO_API_KEY, Accept: "application/json" },
+      timeout: 10000,
+      validateStatus: () => true,
     });
   } catch (error) {
-    if (error?.name === "TimeoutError") throw new Error("BREVO_TIMEOUT");
-    const code = error?.cause?.code;
+    if (error?.code === "ECONNABORTED" || error?.code === "ETIMEDOUT") throw new Error("BREVO_TIMEOUT");
     const known = ["EACCES", "EPERM", "ENOTFOUND", "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"];
-    throw new Error(known.includes(code) ? `BREVO_NETWORK_${code}` : "BREVO_NETWORK_ERROR");
+    throw new Error(known.includes(error?.code) ? `BREVO_NETWORK_${error.code}` : "BREVO_NETWORK_ERROR");
   }
 
   // Do not include provider response bodies, recipients or request data in errors.
-  if (!response.ok) throw new Error(`BREVO_HTTP_${response.status}`);
+  if (response.status < 200 || response.status >= 300) throw new Error(`BREVO_HTTP_${response.status}`);
 }

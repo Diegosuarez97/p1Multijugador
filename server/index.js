@@ -37,6 +37,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use("/uploads", express.static(uploadsDir));
+app.use("/vendor/axios", express.static(path.join(import.meta.dirname, "node_modules", "axios", "dist")));
 app.use(express.static(path.join(import.meta.dirname, "public")));
 app.get("/healthz", (req, res) => res.json({ ok: true }));
 
