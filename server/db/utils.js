@@ -30,6 +30,10 @@ export function updateUserProfile(username, nickname, avatar) {
     `).run(nickname, avatar, username);
 }
 
+export function updateUserPassword(username, hash) {
+    return db.prepare("UPDATE users SET hash = ? WHERE username = ?").run(hash, username).changes;
+}
+
 export function deleteUser(id) {
     return db.transaction((userId) => {
         db.prepare("DELETE FROM password_resets WHERE user_id = ?").run(userId);

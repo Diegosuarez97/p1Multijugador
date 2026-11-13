@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!registerButton) return;
     const form = registerButton.closest('form');
 
-    const minimumPasswordLength = 6;
+    const minimumPasswordLength = 12;
     const minimumAge = 16;
     const passwordInput = form.querySelector('input[name="user_password"]');
     const confirmPasswordInput = document.getElementById('confirm_password');
@@ -159,7 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if ([...password].length < minimumPasswordLength) {
-            alert('La contrasenya ha de tenir com a mínim 6 caràcters');
+            alert(`La contrasenya ha de tenir com a mínim ${minimumPasswordLength} caràcters`);
             return;
         }
 

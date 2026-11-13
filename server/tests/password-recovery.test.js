@@ -11,7 +11,7 @@ import { sendRecoveryEmail } from "../email.js";
 import { validateNewPassword } from "../passwordPolicy.js";
 
 const OLD = "original-password-123";
-const NEW = "K9!q2z";
+const NEW = "K9!q2z-valid-password";
 const EMAIL = "student@example.com";
 const digest = (token) => createHash("sha256").update(token).digest("hex");
 const tokenFrom = (mail) => new URL(mail.resetUrl).hash.slice("#reset-password=".length);
@@ -124,7 +124,7 @@ test("a short password is rejected without changing credentials or consuming the
   const token = tokenFrom(f.mails[0]);
   const response = await f.post("reset-password", { token, password: "short", confirmPassword: "short" });
   assert.equal(response.status, 400);
-  assert.match(response.body.error, /6 caracteres/);
+  assert.match(response.body.error, /12 caracteres/);
   assert.ok(f.store.find(digest(token), Date.now()));
   assert.ok(await argon2.verify(f.db.prepare("SELECT hash FROM users").get().hash, OLD));
 });
@@ -134,7 +134,7 @@ test("a breached password leaves the old credentials and recovery token intact",
   await f.post("forgot-password", { email: EMAIL });
   await waitFor(() => f.mails.length === 1);
   const token = tokenFrom(f.mails[0]);
-  const response = await f.post("reset-password", { token, password: "123456", confirmPassword: "123456" });
+  const response = await f.post("reset-password", { token, password: "123456789012", confirmPassword: "123456789012" });
   assert.equal(response.status, 400);
   assert.match(response.body.error, /no es segura/);
   assert.ok(f.store.find(digest(token), Date.now()));

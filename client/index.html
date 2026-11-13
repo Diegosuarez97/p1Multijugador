@@ -31,8 +31,8 @@
         <input id="reg-email" aria-label="Correo electrónico" type="email" placeholder="Correo electrónico" autocomplete="email" required>
         <label class="field-label" for="reg-birth">Fecha de nacimiento</label>
         <input id="reg-birth" type="date" autocomplete="bday" required>
-        <p class="subtitle">Usa al menos 6 caracteres. Puedes elegir una frase con palabras y espacios. Evita contraseñas comunes o ya expuestas.</p>
-        <input id="reg-pass" aria-label="Contraseña" type="password" placeholder="Contraseña" autocomplete="new-password" minlength="6" required>
+        <p class="subtitle">Usa al menos 12 caracteres. Puedes elegir una frase con palabras y espacios. Evita contraseñas comunes o ya expuestas.</p>
+        <input id="reg-pass" aria-label="Contraseña" type="password" placeholder="Contraseña" autocomplete="new-password" minlength="12" required>
         <button id="register-submit" class="auth-submit" type="submit">Crear cuenta</button>
       </form>
       <label class="field-label" for="room-id">ID de sala (opcional)</label>
@@ -52,10 +52,10 @@
       <form id="reset-password-form" class="recovery-form" hidden>
         <p class="subtitle">El enlace es de un solo uso y caduca en 30 minutos.</p>
         <p class="subtitle">Puedes elegir una frase con palabras y espacios. Evita contraseñas comunes o ya expuestas.</p>
-        <label class="field-label" for="recovery-password">Nueva contraseña (mínimo 6 caracteres)</label>
-        <input id="recovery-password" type="password" autocomplete="new-password" minlength="6" required>
+        <label class="field-label" for="recovery-password">Nueva contraseña (mínimo 12 caracteres)</label>
+        <input id="recovery-password" type="password" autocomplete="new-password" minlength="12" required>
         <label class="field-label" for="recovery-confirm">Repite la contraseña</label>
-        <input id="recovery-confirm" type="password" autocomplete="new-password" minlength="6" required>
+        <input id="recovery-confirm" type="password" autocomplete="new-password" minlength="12" required>
         <button class="auth-submit" type="submit">Guardar contraseña</button>
       </form>
       <p id="recovery-message" class="subtitle" role="status" aria-live="polite"></p>

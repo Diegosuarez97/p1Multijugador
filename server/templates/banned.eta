@@ -22,6 +22,10 @@
                     <h2>Compte bloquejat</h2>
                 </header>
                 <p class="banned-reason"><strong>Motiu:</strong> <%= it.DATA_REASON || "No s'ha indicat cap motiu." %></p>
+                <button class="profile-secondary-action banned-logout" type="button"
+                    onclick="fetch('/api/logout', { method: 'POST' }).then(() => location.assign('/login'))">
+                    Tancar sessió
+                </button>
             </article>
         </section>
     </main>

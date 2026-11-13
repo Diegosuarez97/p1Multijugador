@@ -694,6 +694,12 @@ body.home-page::after {
     overflow-wrap: anywhere;
 }
 
+.banned-logout {
+    display: block;
+    margin: 1.5rem auto 0;
+    cursor: pointer;
+}
+
 .delete-card > header {
     width: min(29rem, calc(100% - 7rem));
     margin: 0 7rem 1rem 0;

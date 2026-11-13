@@ -1,5 +1,27 @@
-function changePassword() {
-    console.log("Changing password...");
+async function changePassword() {
+    const value = (id) => document.getElementById(id).value;
+    const body = {
+        current_password: value("current_password"),
+        new_password: value("new_password"),
+        confirm_new_password: value("confirm_new_password"),
+    };
+
+    const res = await fetch("/api/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    }).catch(() => null);
+    const data = await res?.json().catch(() => ({}));
+
+    if (!res?.ok) {
+        alert(data?.error || "No s'ha pogut canviar la contrasenya.");
+        return;
+    }
+    for (const id of ["current_password", "new_password", "confirm_new_password"]) {
+        document.getElementById(id).value = "";
+    }
+    document.getElementById("change-password-dialog").close();
+    alert("Contrasenya canviada correctament");
 }
 
 document.addEventListener("DOMContentLoaded", () => {

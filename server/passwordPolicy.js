@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 
 // Shared by registration and password recovery. Passwords are never trimmed.
 export async function validateNewPassword(password, { fetchImpl = fetch, logger = console } = {}) {
-  if (typeof password !== "string" || [...password].length < 6) {
-    return "La contraseña debe tener como mínimo 6 caracteres.";
+  if (typeof password !== "string" || [...password].length < 12) {
+    return "La contraseña debe tener como mínimo 12 caracteres.";
   }
   try {
     // SHA-1 is only for the HIBP lookup; stored passwords still use Argon2id.

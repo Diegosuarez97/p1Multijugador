@@ -90,12 +90,12 @@
 
                     <label for="new_password">Nova contrasenya</label>
                     <input type="password" id="new_password" name="new_password"
-                        autocomplete="new-password" minlength="6" required>
-                    <small class="field-hint">Minim 6 caracters.</small>
+                        autocomplete="new-password" minlength="12" required>
+                    <small class="field-hint">Minim 12 caracters.</small>
 
                     <label for="confirm_new_password">Repeteix la nova contrasenya</label>
                     <input type="password" id="confirm_new_password" name="confirm_new_password"
-                        autocomplete="new-password" minlength="6" required>
+                        autocomplete="new-password" minlength="12" required>
 
                     <div class="dialog-actions">
                         <button type="button" class="dialog-cancel"

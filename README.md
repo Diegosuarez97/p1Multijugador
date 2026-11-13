@@ -125,7 +125,7 @@ En Docker local puedes cargar las credenciales con
 1. Arranca servidor y cliente y registra una cuenta con un correo que controles.
 2. Pulsa «He olvidado mi contraseña» y envía ese correo.
 3. Revisa la bandeja de entrada, spam y los registros transaccionales de Brevo.
-4. Abre el enlace y elige una contraseña de al menos 6 caracteres. Inicia
+4. Abre el enlace y elige una contraseña de al menos 12 caracteres. Inicia
    sesión con ella y comprueba que la anterior ya no funciona.
 5. Reutiliza el enlace: debe fallar. Solicita dos enlaces separados por al menos
    un minuto: solo debe funcionar el último. A los 30 minutos caducan.
@@ -138,7 +138,7 @@ cabecera `api-key`. Una respuesta aceptada no garantiza entrega: compruébala en
 su panel. No se envían correos reales en las pruebas automatizadas.
 
 Los tokens tienen 32 bytes aleatorios; solo su SHA-256 se guarda en SQLite.
-Registro y recuperación comparten `server/passwordPolicy.js`: mínimo 6 caracteres,
+Registro, recuperación y cambio comparten `server/passwordPolicy.js`: mínimo 12 caracteres,
 sin exigir mayúsculas, números ni símbolos, permitiendo frases y espacios. Se rechazan
 contraseñas detectadas en Pwned Passwords enviando solo los cinco primeros caracteres
 de su SHA-1. Si el servicio no responde, se permite continuar y se registra únicamente

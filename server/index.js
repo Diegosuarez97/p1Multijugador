@@ -11,10 +11,10 @@ import argon2 from "argon2";
 import cookieParser from "cookie-parser";
 import multer from "multer";
 import { GameRoom } from "./GameRoom.js";
-import { insertUser, getUser, updateUserProfile, deleteUser, passwordResetStore } from './db/utils.js';
+import { insertUser, getUser, updateUserProfile, updateUserPassword, deleteUser, passwordResetStore } from './db/utils.js';
 import { createPasswordRecoveryRouter, recoveryFrontendUrl } from "./passwordRecovery.js";
 import { validateNewPassword } from "./passwordPolicy.js";
-import { createToken, attachUser, auth } from "./utils.js";
+import { EMAIL_RE, MIN_AGE, createToken, attachUser, auth, setAuthCookie, ageFromBirthdate, readRegisterBody } from "./utils.js";
 
 const PORT = process.env.PORT || 2567;
 
@@ -57,7 +57,7 @@ const render = (res, view, data = {}) => res.send(eta.render(view, { ...res.loca
 app.use(attachUser);
 app.use((req, res, next) => {
   const user = req.user && getUser(req.user.username);
-  if (!user?.isBanned || req.path === "/banned") return next();
+  if (!user?.isBanned || req.path === "/banned" || req.path === "/api/logout") return next();
   if (req.path.startsWith("/api/")) {
     if (allowedOrigins?.includes(req.get("origin"))) res.clearCookie("token");
     return res.status(403).json({
@@ -81,54 +81,9 @@ app.get("/register", (req, res) => {
 
 app.get("/delete", auth, (req, res) => {
   if (!getUser(req.user.username)) {
-    res.clearCookie("token");
-    return res.redirect("/login");
+    return res.redirect("/");
   }
   render(res, "delete");
-});
-
-app.post("/api/delete", (req, res, next) => {
-  if (!req.user) return res.status(401).json({ error: "La sessió no és vàlida. Torna a iniciar sessió." });
-  next();
-}, async (req, res) => {
-  const user = getUser(req.user.username);
-  if (!user) {
-    res.clearCookie("token");
-    return res.status(401).json({ error: "La sessió no és vàlida. Torna a iniciar sessió." });
-  }
-
-  const showError = (status, message) => {
-    return res.status(status).json({ error: message });
-  };
-  const password = req.body?.current_password;
-  if (typeof password !== "string" || !password) {
-    return showError(400, "Introdueix la contrasenya actual.");
-  }
-
-  let matches;
-  try { matches = await argon2.verify(user.hash, password); }
-  catch (error) {
-    console.error("Account deletion password check failed:", error);
-    return showError(500, "No s'ha pogut verificar la contrasenya. Torna-ho a provar.");
-  }
-  if (!matches) return showError(401, "La contrasenya no és correcta.");
-
-  try {
-    if (!deleteUser(user.id)) {
-      res.clearCookie("token");
-      return res.status(401).json({ error: "La sessió no és vàlida. Torna a iniciar sessió." });
-    }
-  } catch (error) {
-    console.error("Account deletion failed:", error);
-    return showError(500, "No s'ha pogut eliminar el compte. Torna-ho a provar.");
-  }
-
-  res.clearCookie("token");
-  if (user.avatar?.startsWith("/uploads/")) {
-    try { await rm(path.join(uploadsDir, path.basename(user.avatar)), { force: true }); }
-    catch (error) { console.error("Could not remove deleted account avatar:", error); }
-  }
-  return res.sendStatus(204);
 });
 
 app.get("/banned", auth, (req, res) => {
@@ -176,33 +131,6 @@ app.get("/profile", auth, (req, res) => {
 
 app.use("/api", createPasswordRecoveryRouter({ store: passwordResetStore }));
 
-const setAuthCookie = (res, t) => res.cookie("token", t, { httpOnly: true, secure: process.env.COOKIE_SECURE === "production", sameSite: "lax", maxAge: 60 * 60 * 1000 });
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MIN_AGE = 16;
-
-function ageFromBirthdate(value) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) return null;
-  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
-  const birth = new Date(Date.UTC(year, month - 1, day));
-  if (birth.getUTCFullYear() !== year || birth.getUTCMonth() !== month - 1 || birth.getUTCDate() !== day) return null;
-  const now = new Date();
-  const hadBirthday = now.getUTCMonth() > month - 1 || (now.getUTCMonth() === month - 1 && now.getUTCDate() >= day);
-  return now.getUTCFullYear() - year - (hadBirthday ? 0 : 1);
-}
-
-function readRegisterBody(body = {}) {
-  const text = (value) => (typeof value === "string" ? value.trim() : "");
-  return {
-    username: text(body.username) || text(body.user_name),
-    password: typeof body.password === "string" ? body.password : typeof body.user_password === "string" ? body.user_password : "",
-    confirm: typeof body.confirm_password === "string" ? body.confirm_password : null,
-    email: text(body.email) || text(body.user_email),
-    birthdate: text(body.birthdate),
-  };
-}
-
 app.post("/api/register", async (req, res) => {
   const { username, password, confirm, email, birthdate } = readRegisterBody(req.body);
 
@@ -211,6 +139,7 @@ app.post("/api/register", async (req, res) => {
   if (!username || !email || !birthdate || !password) {
     return fail("Usuario, correo, fecha de nacimiento y contraseña son obligatorios.");
   }
+  if ([...username].length < 3) return fail("El nombre de usuario debe tener al menos 3 caracteres.");
   if (!EMAIL_RE.test(email)) return fail("El correo electrónico no es válido.");
   const age = ageFromBirthdate(birthdate);
   if (age === null || age < 0) return fail("La fecha de nacimiento no es válida.");
@@ -273,9 +202,78 @@ app.put("/api/profile", auth, upload.single("avatar"), async (req, res) => {
   res.json({ ok: true, nickname, avatar });
 });
 
+app.post("/api/password", auth, async (req, res) => {
+  const { current_password, new_password, confirm_new_password } = req.body ?? {};
+  const user = getUser(req.user.username);
+
+  if (!user) {
+    res.clearCookie("token");
+    return res.status(401).json({ error: "La sessió no és vàlida. Torna a iniciar sessió." });
+  }
+  if (!current_password || !new_password || !confirm_new_password) {
+    return res.status(400).json({ error: "Omple tots els camps de contrasenya." });
+  }
+  if (new_password !== confirm_new_password) {
+    return res.status(400).json({ error: "Les contrasenyes noves no coincideixen." });
+  }
+  const passwordError = await validateNewPassword(String(new_password));
+  if (passwordError) return res.status(400).json({ error: passwordError });
+
+  if (!(await argon2.verify(user.hash, String(current_password)))) {
+    return res.status(401).json({ error: "La contrasenya actual no és correcta." });
+  }
+
+  updateUserPassword(user.username, await argon2.hash(new_password));
+  res.json({ ok: true });
+});
+
 app.post("/api/logout", (req, res) => {
   res.clearCookie("token");
   res.json({ ok: true });
+});
+
+app.post("/api/delete", (req, res, next) => {
+  if (!req.user) return res.status(401).json({ error: "La sessió no és vàlida. Torna a iniciar sessió." });
+  next();
+}, async (req, res) => {
+  const user = getUser(req.user.username);
+  if (!user) {
+    res.clearCookie("token");
+    return res.status(401).json({ error: "La sessió no és vàlida. Torna a iniciar sessió." });
+  }
+
+  const showError = (status, message) => {
+    return res.status(status).json({ error: message });
+  };
+  const password = req.body?.current_password;
+  if (typeof password !== "string" || !password) {
+    return showError(400, "Introdueix la contrasenya actual.");
+  }
+
+  let matches;
+  try { matches = await argon2.verify(user.hash, password); }
+  catch (error) {
+    console.error("Account deletion password check failed:", error);
+    return showError(500, "No s'ha pogut verificar la contrasenya. Torna-ho a provar.");
+  }
+  if (!matches) return showError(401, "La contrasenya no és correcta.");
+
+  try {
+    if (!deleteUser(user.id)) {
+      res.clearCookie("token");
+      return res.status(401).json({ error: "La sessió no és vàlida. Torna a iniciar sessió." });
+    }
+  } catch (error) {
+    console.error("Account deletion failed:", error);
+    return showError(500, "No s'ha pogut eliminar el compte. Torna-ho a provar.");
+  }
+
+  res.clearCookie("token");
+  if (user.avatar?.startsWith("/uploads/")) {
+    try { await rm(path.join(uploadsDir, path.basename(user.avatar)), { force: true }); }
+    catch (error) { console.error("Could not remove deleted account avatar:", error); }
+  }
+  return res.sendStatus(204);
 });
 
 app.use((req, res) => {
