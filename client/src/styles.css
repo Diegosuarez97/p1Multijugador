@@ -94,7 +94,8 @@ h1 { font-size: clamp(28px, 5vw, 38px); }
 }
 
 input,
-button {
+button,
+.auth-submit {
   font: inherit;
   padding: 10px 14px;
   border-radius: 8px;
@@ -135,7 +136,7 @@ button:hover:not(:disabled) {
 .recovery-form[hidden] { display: none; }
 .text-button { background: transparent; border-color: transparent; text-decoration: underline; font-size: 13px; }
 #recovery-message { overflow-wrap: anywhere; }
-.auth-submit { background: #574071; color: #fff8e7; border-color: #49345f; }
+.auth-submit { display: inline-block; text-align: center; font-weight: 600; text-decoration: none; background: #574071; color: #fff8e7; border-color: #49345f; }
 .auth-submit:hover:not(:disabled) { background: #46335e; }
 .field-label { align-self: flex-start; font-size: 12px; font-weight: 600; color: #6d5d76; }
 
