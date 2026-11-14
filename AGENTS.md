@@ -52,3 +52,4 @@ cd client && npm install && npm run dev
 - Keep `tiled/map.tmx` and `client/public/assets/map.tmx` (plus `map_tiles.tsx`) in sync; they are duplicate copies today.
 
 > ALWAYS use the ponytail skill.
+> NEVER push to git.
