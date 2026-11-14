@@ -13,7 +13,7 @@ services:
       BREVO_API_KEY: ${BREVO_API_KEY:-}
       BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:-}
       BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-El torneo de los magos}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      SERVER_URL: ${SERVER_URL:-http://localhost:2567}
     ports:
       - "2567:2567"
     volumes:

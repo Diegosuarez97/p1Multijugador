@@ -16,52 +16,20 @@
     <img class="screen-title home-title" src="/assets/interfaz/tittle.png" alt="El torneo de los magos">
     <div class="stone-card home-card">
       <p class="subtitle">Encuentra tu camino entre la piedra y los jardines.</p>
-      <div class="auth-tabs" role="tablist" aria-label="Acceso">
-        <button id="login" class="auth-tab active" type="button" role="tab" aria-selected="true" aria-controls="login-panel">Entrar</button>
-        <button id="register" class="auth-tab" type="button" role="tab" aria-selected="false" aria-controls="register-panel">Registrarse</button>
+      <div class="auth-tabs">
+        <span class="auth-tab active">Entrar</span>
+        <a id="register" class="auth-tab" href="#" target="_blank" rel="noopener">Registrarse</a>
       </div>
-      <form id="login-panel" class="auth-panel active" role="tabpanel" aria-labelledby="login">
+      <form id="login-panel" class="auth-panel active">
         <input id="user" aria-label="Usuario" placeholder="Usuario" autocomplete="username" required>
         <input id="pass" aria-label="Contraseña" type="password" placeholder="Contraseña" autocomplete="current-password" required>
         <input id="totp" aria-label="Código de verificación" placeholder="Código de 6 dígitos" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" hidden>
         <button id="login-submit" class="auth-submit" type="submit">Iniciar sesión</button>
-        <button id="forgot-password-link" class="text-button" type="button">He olvidado mi contraseña</button>
-      </form>
-      <form id="register-panel" class="auth-panel" role="tabpanel" aria-labelledby="register">
-        <input id="reg-user" aria-label="Usuario" placeholder="Usuario" autocomplete="username" minlength="3" maxlength="63" required>
-        <input id="reg-email" aria-label="Correo electrónico" type="email" placeholder="Correo electrónico" autocomplete="email" required>
-        <label class="field-label" for="reg-birth">Fecha de nacimiento</label>
-        <input id="reg-birth" type="date" autocomplete="bday" required>
-        <p class="subtitle">Usa al menos 12 caracteres. Puedes elegir una frase con palabras y espacios. Evita contraseñas comunes o ya expuestas.</p>
-        <input id="reg-pass" aria-label="Contraseña" type="password" placeholder="Contraseña" autocomplete="new-password" minlength="12" required>
-        <button id="register-submit" class="auth-submit" type="submit">Crear cuenta</button>
+        <a id="forgot-password-link" class="text-button" href="#" target="_blank" rel="noopener">He olvidado mi contraseña</a>
       </form>
       <label class="field-label" for="room-id">ID de sala (opcional)</label>
       <input id="room-id" name="roomId" type="text" placeholder="Conectar a una sala existente" autocomplete="off" spellcheck="false">
       <div id="msg" role="status"></div>
-    </div>
-  </div>
-  <div id="recovery" class="screen">
-    <div class="stone-card">
-      <h2>Recupera tu contraseña</h2>
-      <form id="forgot-password-form" class="recovery-form">
-        <p class="subtitle">Introduce el correo con el que te registraste.</p>
-        <label class="field-label" for="recovery-email">Correo electrónico</label>
-        <input id="recovery-email" type="email" autocomplete="email" maxlength="254" required>
-        <button class="auth-submit" type="submit">Enviar enlace</button>
-      </form>
-      <form id="reset-password-form" class="recovery-form" hidden>
-        <p class="subtitle">El enlace es de un solo uso y caduca en 30 minutos.</p>
-        <p class="subtitle">Puedes elegir una frase con palabras y espacios. Evita contraseñas comunes o ya expuestas.</p>
-        <label class="field-label" for="recovery-password">Nueva contraseña (mínimo 12 caracteres)</label>
-        <input id="recovery-password" type="password" autocomplete="new-password" minlength="12" required>
-        <label class="field-label" for="recovery-confirm">Repite la contraseña</label>
-        <input id="recovery-confirm" type="password" autocomplete="new-password" minlength="12" required>
-        <button class="auth-submit" type="submit">Guardar contraseña</button>
-      </form>
-      <p id="recovery-message" class="subtitle" role="status" aria-live="polite"></p>
-      <button id="request-another-reset" class="text-button" type="button">Solicitar otro enlace</button>
-      <button id="recovery-back" type="button">Volver a iniciar sesión</button>
     </div>
   </div>
   <div id="lobby" class="screen">
@@ -72,7 +40,7 @@
       <div class="room-id-actions">
         <div id="roomId"></div>
         <button id="copyRoomId" class="auth-submit" type="button">Copiar ID</button>
-        <a class="auth-submit" href="https://iso-server-t9m2.onrender.com/" target="_blank" rel="noopener noreferrer">Editar perfil</a>
+        <a id="profile-link" class="auth-submit" href="#" target="_blank" rel="noopener noreferrer">Editar perfil</a>
       </div>
       <div id="lobbyInfo"></div>
     </div>

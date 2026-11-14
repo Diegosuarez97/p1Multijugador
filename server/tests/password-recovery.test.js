@@ -6,7 +6,7 @@ import express from "express";
 import Database from "better-sqlite3";
 import argon2 from "argon2";
 import { createPasswordResetStore } from "../db/passwordResets.js";
-import { createPasswordRecoveryRouter } from "../passwordRecovery.js";
+import { createPasswordRecoveryRouter, recoveryUrl } from "../passwordRecovery.js";
 import { sendRecoveryEmail } from "../email.js";
 import axios from "axios";
 import { validateNewPassword } from "../passwordPolicy.js";
@@ -36,7 +36,7 @@ async function fixture(t, sendEmail, validatePassword) {
   const app = express();
   app.use(express.json());
   app.use("/api", createPasswordRecoveryRouter({
-    store, now: () => time, frontendUrl: () => new URL("http://localhost:5173/"),
+    store, now: () => time, baseUrl: () => new URL("http://localhost:2567/"),
     sendEmail: sendEmail || (async (mail) => { mails.push(mail); }),
     validatePassword: validatePassword || validateNewPassword,
     logger: { error: (...args) => logs.push(args.join(" ")) },
@@ -58,6 +58,15 @@ async function fixture(t, sendEmail, validatePassword) {
   return { db, store, mails, logs, post, advance: (ms) => { time += ms; } };
 }
 
+test("reset links use the configured public server URL, not the request host", (t) => {
+  const saved = process.env.SERVER_URL;
+  process.env.SERVER_URL = "https://game.example.com/";
+  t.after(() => {
+    if (saved === undefined) delete process.env.SERVER_URL; else process.env.SERVER_URL = saved;
+  });
+  assert.equal(recoveryUrl({ protocol: "http", get: () => "evil.example" }).href, "https://game.example.com/");
+});
+
 test("recovery stores only a token hash, keeps the old password until reset, and consumes once", async (t) => {
   const f = await fixture(t);
   const result = await f.post("forgot-password", { email: EMAIL });
@@ -66,6 +75,7 @@ test("recovery stores only a token hash, keeps the old password until reset, and
   await waitFor(() => f.mails.length === 1);
   const token = tokenFrom(f.mails[0]);
   assert.match(token, /^[a-f0-9]{64}$/);
+  assert.equal(new URL(f.mails[0].resetUrl).pathname, "/reset");
   const row = f.db.prepare("SELECT * FROM password_resets").get();
   assert.equal(row.token_hash, digest(token));
   assert.notEqual(row.token_hash, token);

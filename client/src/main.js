@@ -1,13 +1,13 @@
 import { Application, Container, Graphics, Sprite, Text, Assets, extensions } from "pixi.js";
 import { tiledMapLoader } from 'pixi-tiledmap';
 import { Client } from "colyseus.js";
-import { API, HOST, GRID, TW, TH, COLORS, WORLD_SCALE, MAX_MOVE_TILES } from "./utils/constants.js";
+import axios from "axios";
+import { API, BASE, HOST, GRID, TW, TH, COLORS, WORLD_SCALE, MAX_MOVE_TILES } from "./utils/constants.js";
 import * as utils from "./utils/functions.js";
 import { characterNameForTeam, loadCharacterAnimations, makeCharacterSprite, setCharacterWalking } from "./utils/characters.js";
 import { renderTerrainSurfaces, createBoostOrb, addSanctuaryEmblem } from "./gameVisuals.js";
 import { cameraScale } from "./utils/camera.js";
 import { findReachableTiles } from "./utils/movement.js";
-import { initPasswordRecovery } from "./passwordRecovery.js";
 
 extensions.add(tiledMapLoader);
 
@@ -28,24 +28,18 @@ function resetTwoFactorStep() {
   $("totp").value = "";
 }
 
-function showAuthPanel(kind) {
-  const isLogin = kind === "login";
-  for (const [el, active] of [[$("login"), isLogin], [$("register"), !isLogin]]) {
-    el.classList.toggle("active", active);
-    el.setAttribute("aria-selected", String(active));
-  }
-  $("login-panel").classList.toggle("active", isLogin);
-  $("register-panel").classList.toggle("active", !isLogin);
+function showLogin() {
   resetTwoFactorStep();
   $("msg").textContent = "";
 }
 
-$("login").onclick = () => showAuthPanel("login");
-$("register").onclick = () => showAuthPanel("register");
+$("register").href = `${BASE}/register`;
+$("forgot-password-link").href = `${BASE}/forgot`;
+$("profile-link").href = `${BASE}/profile`;
 
-async function auth(kind) {
+async function auth() {
   $("msg").textContent = "";
-  if (kind === "login" && pendingTwoFactor) {
+  if (pendingTwoFactor) {
     try {
       const { data } = await axios.post(
         `${API}/login/2fa`,
@@ -59,16 +53,9 @@ async function auth(kind) {
     }
     return;
   }
-  const payload = kind === "login"
-    ? { username: $("user").value.trim(), password: $("pass").value }
-    : {
-        username: $("reg-user").value.trim(),
-        email: $("reg-email").value.trim(),
-        birthdate: $("reg-birth").value,
-        password: $("reg-pass").value,
-      };
+  const payload = { username: $("user").value.trim(), password: $("pass").value };
   try {
-    const { data } = await axios.post(`${API}/${kind}`, payload, { withCredentials: true });
+    const { data } = await axios.post(`${API}/login`, payload, { withCredentials: true });
     if (data.requires2fa) {
       pendingTwoFactor = data.challenge;
       $("totp").hidden = false;
@@ -90,10 +77,7 @@ async function auth(kind) {
     }
   }
 }
-$("login-panel").onsubmit = (e) => { e.preventDefault(); auth("login"); };
-$("register-panel").onsubmit = (e) => { e.preventDefault(); auth("register"); };
-
-initPasswordRecovery({ api: API, show, showLogin: () => showAuthPanel("login") });
+$("login-panel").onsubmit = (e) => { e.preventDefault(); auth(); };
 
 // ---------- room + latency ----------
 let room, authToken, pingInterval, rtt = 0, offset = 0, samples = [];
@@ -164,15 +148,13 @@ async function exitMatch(replay) {
       authToken = undefined;
       $("user").value = "";
       $("pass").value = "";
-      $("reg-pass").value = "";
-      showAuthPanel("login");
+      showLogin();
       show("menu");
     }
   } catch (error) {
     authToken = undefined;
     $("pass").value = "";
-    $("reg-pass").value = "";
-    showAuthPanel("login");
+    showLogin();
     show("menu");
     $("msg").textContent = `No se ha podido entrar en otra partida: ${error.message}`;
   } finally {

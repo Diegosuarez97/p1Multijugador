@@ -12,7 +12,7 @@ import cookieParser from "cookie-parser";
 import multer from "multer";
 import { GameRoom } from "./GameRoom.js";
 import { insertUser, getUser, updateUserProfile, updateUserPassword, deleteUser, passwordResetStore } from './db/utils.js';
-import { createPasswordRecoveryRouter, recoveryFrontendUrl } from "./passwordRecovery.js";
+import { createPasswordRecoveryRouter } from "./passwordRecovery.js";
 import { createTwoFactorRouter } from "./twoFactor.js";
 import { validateNewPassword } from "./passwordPolicy.js";
 import { EMAIL_RE, MIN_AGE, createToken, createTwoFactorChallenge, attachUser, auth, setAuthCookie, ageFromBirthdate, readRegisterBody } from "./utils.js";
@@ -99,13 +99,11 @@ app.get("/banned", auth, (req, res) => {
 });
 
 app.get("/forgot", (_req, res) => {
-  try {
-    const url = recoveryFrontendUrl();
-    url.hash = "forgot-password";
-    res.redirect(url.toString());
-  } catch {
-    res.status(503).send("La recuperación de contraseña no está configurada. Contacta con el administrador.");
-  }
+  render(res, "forgot");
+});
+
+app.get("/reset", (_req, res) => {
+  render(res, "reset");
 });
 
 const upload = multer({

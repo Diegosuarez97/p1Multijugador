@@ -29,17 +29,17 @@ export function createLimiter(now) {
   };
 }
 
-export function recoveryFrontendUrl(value = process.env.FRONTEND_URL) {
-  const url = new URL(value || (process.env.NODE_ENV === "production" ? "" : "http://localhost:5173"));
-  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
-    throw new Error("INVALID_FRONTEND_URL");
-  }
-  return url;
+// The Host header is user-controlled, so production must configure the public URL.
+export function recoveryUrl(req) {
+  const configured = process.env.SERVER_URL || process.env.RENDER_EXTERNAL_URL;
+  if (configured) return new URL("/", configured);
+  if (process.env.NODE_ENV === "production") throw new Error("SERVER_URL must be set in production");
+  return new URL("/", `${req.protocol}://${req.get("host")}`);
 }
 
 export function createPasswordRecoveryRouter({
   store, sendEmail = sendRecoveryEmail, now = Date.now, validatePassword = validateNewPassword,
-  frontendUrl = () => recoveryFrontendUrl(), logger = console,
+  baseUrl = recoveryUrl, logger = console,
 }) {
   const router = Router();
   const allow = createLimiter(now);
@@ -78,9 +78,10 @@ export function createPasswordRecoveryRouter({
         store.prune(now());
         const user = store.findUserByEmail(email);
         if (!user) return;
-        const url = frontendUrl();
+        const url = baseUrl(req);
         const token = randomBytes(32).toString("hex");
         tokenHash = digest(token);
+        url.pathname = "/reset";
         url.hash = `reset-password=${token}`;
         store.save(user.id, tokenHash, now() + 30 * MINUTE);
         await sendEmail({ recipientEmail: user.email, resetUrl: url.toString() });
