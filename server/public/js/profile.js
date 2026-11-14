@@ -19,6 +19,39 @@ async function changePassword() {
     alert("Contrasenya canviada correctament");
 }
 
+async function startTwoFactorSetup() {
+    try {
+        const { data } = await axios.post("/api/2fa/setup");
+        document.getElementById("totp_qr").src = data.qr;
+        document.getElementById("totp_secret").textContent = data.secret;
+        document.getElementById("totp_setup").hidden = false;
+        document.getElementById("totp_start").hidden = true;
+        document.getElementById("totp_activate").hidden = false;
+    } catch (error) {
+        alert(error.response?.data?.error || "No s'ha pogut iniciar la configuració del 2FA.");
+    }
+}
+
+async function enableTwoFactor() {
+    try {
+        await axios.post("/api/2fa/enable", { code: document.getElementById("totp_enable_code").value });
+    } catch (error) {
+        alert(error.response?.data?.error || "No s'ha pogut activar el 2FA.");
+        return;
+    }
+    location.reload();
+}
+
+async function disableTwoFactor() {
+    try {
+        await axios.post("/api/2fa/disable", { code: document.getElementById("totp_disable_code").value });
+    } catch (error) {
+        alert(error.response?.data?.error || "No s'ha pogut desactivar el 2FA.");
+        return;
+    }
+    location.reload();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     const avatarInput = document.getElementById("data_avatar");
     const avatarPreview = document.querySelector(".profile-avatar-upload-preview");

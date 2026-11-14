@@ -19,6 +19,15 @@ function show(id) {
 }
 
 // ---------- auth ----------
+// Set by the password step; it only proves the password was correct.
+let pendingTwoFactor = null;
+
+function resetTwoFactorStep() {
+  pendingTwoFactor = null;
+  $("totp").hidden = true;
+  $("totp").value = "";
+}
+
 function showAuthPanel(kind) {
   const isLogin = kind === "login";
   for (const [el, active] of [[$("login"), isLogin], [$("register"), !isLogin]]) {
@@ -27,6 +36,7 @@ function showAuthPanel(kind) {
   }
   $("login-panel").classList.toggle("active", isLogin);
   $("register-panel").classList.toggle("active", !isLogin);
+  resetTwoFactorStep();
   $("msg").textContent = "";
 }
 
@@ -35,6 +45,20 @@ $("register").onclick = () => showAuthPanel("register");
 
 async function auth(kind) {
   $("msg").textContent = "";
+  if (kind === "login" && pendingTwoFactor) {
+    try {
+      const { data } = await axios.post(
+        `${API}/login/2fa`,
+        { challenge: pendingTwoFactor, code: $("totp").value },
+        { withCredentials: true },
+      );
+      await joinRoom(data.token, $("room-id").value.trim());
+    } catch (e) {
+      if (e.response?.status === 401) resetTwoFactorStep();
+      $("msg").textContent = e.response?.data?.error || e.message;
+    }
+    return;
+  }
   const payload = kind === "login"
     ? { username: $("user").value.trim(), password: $("pass").value }
     : {
@@ -45,6 +69,13 @@ async function auth(kind) {
       };
   try {
     const { data } = await axios.post(`${API}/${kind}`, payload, { withCredentials: true });
+    if (data.requires2fa) {
+      pendingTwoFactor = data.challenge;
+      $("totp").hidden = false;
+      $("totp").focus();
+      $("msg").textContent = "Introduce el código de 6 dígitos de tu aplicación de autenticación.";
+      return;
+    }
     await joinRoom(data.token, $("room-id").value.trim());
   } catch (e) {
     const data = e.response?.data;

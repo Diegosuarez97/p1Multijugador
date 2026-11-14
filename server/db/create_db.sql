@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS users (
     nickname VARCHAR(150) default '',
     avatar VARCHAR(255) default '/icons/default.svg',
     isBanned BOOLEAN DEFAULT 0,
-    reason TEXT
+    reason TEXT,
+    totp_secret TEXT,
+    totp_enabled BOOLEAN DEFAULT 0
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS username_UNIQUE ON users (username ASC);

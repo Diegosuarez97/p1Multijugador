@@ -40,3 +40,16 @@ export function deleteUser(id) {
         return db.prepare("DELETE FROM users WHERE id = ?").run(userId).changes;
     }).immediate(id);
 }
+
+// Stores a pending secret; totp_enabled stays 0 until the first code is confirmed.
+export function setUserTotpSecret(username, secret) {
+    db.prepare("UPDATE users SET totp_secret = ?, totp_enabled = 0 WHERE username = ?").run(secret, username);
+}
+
+export function enableUserTotp(username) {
+    return db.prepare("UPDATE users SET totp_enabled = 1 WHERE username = ?").run(username).changes;
+}
+
+export function clearUserTotp(username) {
+    db.prepare("UPDATE users SET totp_secret = NULL, totp_enabled = 0 WHERE username = ?").run(username);
+}

@@ -13,8 +13,9 @@ import multer from "multer";
 import { GameRoom } from "./GameRoom.js";
 import { insertUser, getUser, updateUserProfile, updateUserPassword, deleteUser, passwordResetStore } from './db/utils.js';
 import { createPasswordRecoveryRouter, recoveryFrontendUrl } from "./passwordRecovery.js";
+import { createTwoFactorRouter } from "./twoFactor.js";
 import { validateNewPassword } from "./passwordPolicy.js";
-import { EMAIL_RE, MIN_AGE, createToken, attachUser, auth, setAuthCookie, ageFromBirthdate, readRegisterBody } from "./utils.js";
+import { EMAIL_RE, MIN_AGE, createToken, createTwoFactorChallenge, attachUser, auth, setAuthCookie, ageFromBirthdate, readRegisterBody } from "./utils.js";
 
 const PORT = process.env.PORT || 2567;
 
@@ -124,13 +125,15 @@ app.get("/profile", auth, (req, res) => {
     DATA_EMAIL: user.email,
     DATA_BIRTHDATE: user.birthdate,
     DATA_NICKNAME: user.nickname,
-    DATA_AVATAR: user.avatar
+    DATA_AVATAR: user.avatar,
+    DATA_TOTP_ENABLED: Boolean(user.totp_enabled)
   });
 });
 
 /* API */
 
 app.use("/api", createPasswordRecoveryRouter({ store: passwordResetStore }));
+app.use("/api", createTwoFactorRouter());
 
 app.post("/api/register", async (req, res) => {
   const { username, password, confirm, email, birthdate } = readRegisterBody(req.body);
@@ -179,6 +182,10 @@ app.post("/api/login", async (req, res) => {
     return res.status(403).json({
       error: "Aquest compte està bloquejat.", banned: true, reason: user.reason, redirect: "/banned",
     });
+  }
+  // The password step alone is not enough; a short-lived challenge replaces the session token.
+  if (user.totp_enabled) {
+    return res.json({ requires2fa: true, challenge: createTwoFactorChallenge(user) });
   }
   const token = createToken({ id: user.id, username: user.username });
   setAuthCookie(res, token);

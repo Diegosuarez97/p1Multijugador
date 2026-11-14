@@ -10,7 +10,7 @@ const INVALID_LINK = "El enlace no es válido o ha caducado. Solicita uno nuevo.
 const digest = (value) => createHash("sha256").update(value).digest("hex");
 
 // Fixed windows, bounded memory and lazy cleanup. Suitable for one server process.
-function createLimiter(now) {
+export function createLimiter(now) {
   const entries = new Map();
   let nextCleanup = 0;
   return (key, limit, duration) => {

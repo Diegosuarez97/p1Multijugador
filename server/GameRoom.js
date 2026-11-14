@@ -166,6 +166,7 @@ export class GameRoom extends Room {
     let user;
     try { user = jwt.verify(token, jwtSecret); }
     catch { throw new Error("Invalid token"); }
+    if (user.scope) throw new Error("Invalid token");
     if (user.isBanned) throw new Error("Banned account");
     if (this.clients.some((c) => c.auth?.id === user.id)) throw new Error("Already connected");
     return user;

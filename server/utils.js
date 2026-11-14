@@ -14,14 +14,30 @@ export const createToken = (u) => jwt.sign({
   ...(u.isBanned ? { isBanned: true } : {}),
 }, jwtSecret, { expiresIn: "2h" });
 
+// Short-lived proof that the password step passed; useless without the TOTP code.
+export const createTwoFactorChallenge = (u) => jwt.sign({
+  id: u.id,
+  username: u.username,
+  scope: "2fa",
+}, jwtSecret, { expiresIn: "5m" });
+
+export function readTwoFactorChallenge(token) {
+  const payload = jwt.verify(String(token ?? ""), jwtSecret);
+  if (payload.scope !== "2fa") throw new Error("not a 2FA challenge");
+  return payload;
+}
+
 export function attachUser(req, res, next) {
   const token = req.cookies.token;
   res.locals.user = null;
 
   if (token) {
     try {
-      req.user = jwt.verify(token, jwtSecret);
-      res.locals.user = req.user;
+      const payload = jwt.verify(token, jwtSecret);
+      // A 2FA challenge proves the password only; it must never authenticate a request.
+      if (payload.scope) throw new Error("not a session token");
+      req.user = payload;
+      res.locals.user = payload;
     } catch (err) {
       res.clearCookie("token"); // expired or invalid
     }
@@ -31,7 +47,7 @@ export function attachUser(req, res, next) {
 
 export function auth(req, res, next) {
   if (!req.user) {
-    return req.path.startsWith("/api/")
+    return req.originalUrl.startsWith("/api/")
       ? res.status(401).json({ error: "La sessió no és vàlida. Torna a iniciar sessió." })
       : res.redirect("/login");
   }

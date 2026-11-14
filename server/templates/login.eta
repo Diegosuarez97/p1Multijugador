@@ -33,6 +33,11 @@
                 <input id="login_username" type="text" name="user_name" required />
                 <label for="login_password">Contrasenya</label>
                 <input id="login_password" type="password" name="user_password" required />
+                <div id="two-factor-step" hidden>
+                    <label for="login_totp">Codi de verificació</label>
+                    <input id="login_totp" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+                        autocomplete="one-time-code" />
+                </div>
                 <p class="forgot-link"><a href="/forgot">He oblidat la contrasenya</a></p>
             </form>
             <button class="animated-submit login-submit" name="login" onclick=login()>
