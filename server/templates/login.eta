@@ -30,17 +30,17 @@
                     <h2>Inici de sessió</h2>
                 </header>
                 <label for="login_username">Nom d'usuari</label>
-                <input id="login_username" type="text" name="user_name" required />
+                <input id="login_username" type="text" name="user_name" autocomplete="username" required />
                 <label for="login_password">Contrasenya</label>
-                <input id="login_password" type="password" name="user_password" required />
+                <input id="login_password" type="password" name="user_password" autocomplete="current-password" required />
                 <div id="two-factor-step" hidden>
-                    <label for="login_totp">Codi de verificació</label>
-                    <input id="login_totp" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+                    <label for="totp">Codi OTP</label>
+                    <input id="totp" type="text" name="totp" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
                         autocomplete="one-time-code" />
                 </div>
                 <p class="forgot-link"><a href="/forgot">He oblidat la contrasenya</a></p>
             </form>
-            <button class="animated-submit login-submit" name="login" onclick=login()>
+            <button class="animated-submit login-submit" type="submit" form="login-form" name="login">
                 <span class="button-label">Iniciar sessió</span>
             </button>
         </section>

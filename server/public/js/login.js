@@ -6,12 +6,15 @@ const valid = (value) => value !== null && value !== undefined && value.trim() !
 
 function showTwoFactorStep(challenge) {
     pendingChallenge = challenge;
-    document.getElementById("login_username").disabled = true;
-    document.getElementById("login_password").disabled = true;
     document.getElementById("two-factor-step").hidden = false;
     document.querySelector(".login-submit .button-label").textContent = "Verificar";
-    document.getElementById("login_totp").focus();
+    document.getElementById("totp").focus();
 }
+
+document.getElementById("login-form").addEventListener("submit", (event) => {
+    event.preventDefault();
+    login();
+});
 
 function verifyTwoFactor(code, $feedback) {
     axios.post("/api/login/2fa", { challenge: pendingChallenge, code: code }).then(() => {
@@ -36,7 +39,7 @@ function login() {
     $feedback.textContent = "";
 
     if (pendingChallenge) {
-        const code = document.getElementById("login_totp").value;
+        const code = document.getElementById("totp").value;
         if (!/^\d{6}$/.test(code.trim())) {
             $feedback.textContent = "El codi ha de tenir 6 dígits.";
             return;
