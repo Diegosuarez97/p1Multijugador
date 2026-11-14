@@ -1,6 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { findReachableTiles } from "../src/utils/movement.js";
+import { findPath, findReachableTiles } from "../src/utils/movement.js";
+
+test("pathfinding routes around blocked tiles and reports unreachable targets", () => {
+  const blocked = new Set([611]);
+  assert.deepEqual(findPath(10, 10, 12, 10, 60, blocked), [
+    { x: 10, y: 10 }, { x: 10, y: 11 }, { x: 11, y: 11 }, { x: 12, y: 11 }, { x: 12, y: 10 },
+  ]);
+  assert.equal(findPath(10, 10, 11, 10, 60, blocked), null);
+});
 
 test("movement range excludes blocked tiles and stays within the step limit", () => {
   const reachable = findReachableTiles(10, 10, 2, 60, new Set([611]));

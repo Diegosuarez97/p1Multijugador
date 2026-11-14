@@ -4,8 +4,8 @@ Isometric multiplayer game: PixiJS client + Express/Colyseus server. Two indepen
 
 ## Layout
 
-- `client/` — Vite + PixiJS game client (dev port 5173). Entry: `client/src/main.js`, markup in `client/index.html`.
-- `server/` — Express + Colyseus + Eta server (port 2567). Entry: `server/index.js`, game logic in `server/GameRoom.js`.
+- `client/` — Vite + PixiJS game client (dev port 5173). Entry: `client/src/main.js`, markup in `client/index.html`. Login, lobby and ping UI live in their own modules; PixiJS rendering is in `client/src/game/GameView.js`.
+- `server/` — Express + Colyseus + Eta server (port 2567). Entry: `server/index.js`, game logic in `server/GameRoom.js`, map/pathfinding and message handlers in `server/game/`, HTTP routes in `server/routes/`.
 - `server/` also serves a **separate** server-rendered site (home/login/register/profile) from `server/templates/*.eta` and `server/public/`. That is not the Vite game client; don't confuse the two.
 - `tiled/` — Tiled project copy of the map; the server only loads `client/public/assets/map.tmj`.
 - `.idea/` is tracked (WebStorm). Avoid committing incidental IDE changes.
@@ -26,7 +26,7 @@ cd client && npm install && npm run dev
 - `npm start`, `npm run dev`, and `npm run db` create a missing local `.env` from `.env.example`, preserving existing files. Start/dev also initialize SQLite tables. Automatic `.env` creation is disabled when `NODE_ENV=production`.
 - `DB_PATH`, `UPLOAD_DIR`, and `MAP_PATH` override the defaults (`server/db/data.db`, `server/public/uploads`, `client/public/assets/map.tmj`). Relative env paths resolve from the server cwd.
 - `NODE_ENV=production` makes a missing `JWT_SECRET` a startup error.
-- No test suite. Verification is `cd client && npm run build`, or the full stack with `docker compose up --build`; `npm run dev` is the way to exercise the server directly.
+- Run `node --test tests/*.test.js` in both `client/` and `server/`, then `cd client && npm run build`. The full stack can also be checked with `docker compose up --build`; `npm run dev` is the way to exercise the server directly.
 
 ## Docker / Render
 
