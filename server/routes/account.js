@@ -23,7 +23,10 @@ export function createAccountRouter({ uploadsDir }) {
     limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
     fileFilter: (req, file, callback) => {
       const allowed = ["image/jpeg", "image/png", "image/webp"];
-      callback(null, allowed.includes(file.mimetype));
+      if (allowed.includes(file.mimetype)) return callback(null, true);
+      const error = new Error("Unsupported avatar type");
+      error.code = "AVATAR_TYPE";
+      callback(error);
     },
   });
 
@@ -41,8 +44,20 @@ export function createAccountRouter({ uploadsDir }) {
     });
   });
 
-  router.put("/profile", auth, upload.single("avatar"), async (req, res) => {
+  const uploadAvatar = upload.single("avatar");
+  // Multer reports rejected files here; answer JSON so the client can show the reason.
+  const avatarUpload = (req, res, next) => uploadAvatar(req, res, (error) => {
+    if (!error) return next();
+    const message = error.code === "LIMIT_FILE_SIZE"
+      ? "L'avatar ha de pesar menys de 2 MB."
+      : error.code === "AVATAR_TYPE" ? "L'avatar ha de ser una imatge JPEG, PNG o WebP." : null;
+    if (!message) return next(error);
+    res.status(400).json({ error: message });
+  });
+
+  router.put("/profile", auth, avatarUpload, async (req, res) => {
     const nickname = (req.body.nickname || "").trim();
+    if (!nickname) return res.status(400).json({ error: "El nickname no pot estar buit." });
     const user = getUser(req.user.username);
     if (!user) return res.status(404).json({ error: "User not found" });
 

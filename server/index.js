@@ -6,6 +6,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { Eta } from "eta";
 import { addTrophy, getUser, passwordResetStore } from "./db/utils.js";
+import { GameRoom } from "./GameRoom.js";
 import { createPasswordRecoveryRouter } from "./passwordRecovery.js";
 import { createTwoFactorRouter } from "./twoFactor.js";
 import { attachUser } from "./utils.js";
@@ -15,6 +16,7 @@ import { createGameRouter } from "./routes/game.js";
 import { createPagesRouter } from "./routes/pages.js";
 
 const PORT = process.env.PORT || 2567;
+GameRoom.onWin = addTrophy;
 const uploadsDir = process.env.UPLOAD_DIR
   ? path.resolve(process.env.UPLOAD_DIR)
   : path.join(import.meta.dirname, "public", "uploads");

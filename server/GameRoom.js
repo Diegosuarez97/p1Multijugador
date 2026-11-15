@@ -13,6 +13,8 @@ const PLAYER_TIMEOUT = 15000;
 const MAX_EVENTS = 200;
 
 export class GameRoom {
+  static onWin = () => {}; // index.js replaces it with addTrophy; tests keep the no-op
+
   constructor(roomId, { maxPlayers = MAX_PLAYERS, clock } = {}) {
     this.roomId = roomId;
     this.maxPlayers = maxPlayers;
@@ -266,13 +268,11 @@ export class GameRoom {
     this.state.trophyAvailable = false;
     this.state.winnerId = String(playerId);
     this.state.winnerName = player.name;
-    const winnerUserId = this.clients.find((client) => client.sessionId === sessionId)?.auth?.id;
-    if (winnerUserId !== undefined) {
-      try {
-        GameRoom.onWin(winnerUserId);
-      } catch (error) {
-        console.error("Could not record the trophy:", error);
-      }
+    // HTTP sessions are keyed by user id, so the winner id is the user id.
+    try {
+      GameRoom.onWin(String(playerId));
+    } catch (error) {
+      console.error("Could not record the trophy:", error);
     }
     for (const [destination, contest] of [...this.destinationClaims]) {
       this.cancelDestinationContest(destination, contest);

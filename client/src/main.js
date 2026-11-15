@@ -103,62 +103,36 @@ $("back-menu").onclick = () => exitMatch(false);
 $("leave-lobby").onclick = () => exitMatch(false);
 
 function friendlyJoinError(error, mode) {
-  const text = String(error?.message ?? error);
-  if (/not found|no rooms found/i.test(text)) {
+  // The HTTP API answers { error } with the real reason.
+  const text = String(error?.response?.data?.error ?? error?.message ?? error);
+  if (/no existeix|not found|no rooms found/i.test(text)) {
     return mode === "join" ? "No existe ninguna sala con ese código." : "No se ha encontrado ninguna sala disponible.";
   }
-  if (/already started|locked/i.test(text)) return "Esa partida ya ha empezado o está llena.";
-  if (/already connected/i.test(text)) return "Ya estás conectado a esa sala desde otra pestaña.";
+  if (/already started|locked|full|liena/i.test(text)) return "Esa partida ya ha empezado o está llena.";
   if (/invalid token/i.test(text)) return "Tu sesión ha caducado. Vuelve a iniciar sesión.";
   return `No se ha podido entrar en la sala: ${text}`;
 }
 
-// mode: "quick" joins any open public room (or opens one), "create" opens a private room, "join" uses a code.
+// mode: "quick"/"create" join an open room (the server opens one), "join" uses a code.
 async function joinRoom(mode, code) {
   const token = getToken();
-  const client = new Client(HOST);
+  let connection;
   try {
-    if (mode === "join") room = await client.joinById(code, { token });
-    else if (mode === "create") room = await client.create("game", { token, private: true });
-    else room = await client.joinOrCreate("game", { token });
+    connection = await joinGame({ token, roomId: mode === "join" ? code : null });
   } catch (error) {
     const message = friendlyJoinError(error, mode);
-    if (/invalid token/i.test(String(error?.message))) goToLogin(message);
+    if (error?.response?.status === 401) goToLogin(message);
     throw new Error(message);
   }
+  room = connection;
 
   $("roomId").textContent = `Código de sala: ${room.roomId}`;
   $("copyRoomId").textContent = "Copiar código";
-  const connection = room;
-  samples = [];
-  rtt = 0;
-  offset = 0;
   lastPhase = "";
   settings.setInRoom(true);
   audio.setScene("game");
 
   room.onMessage("error", (message) => ($("lobbyInfo").textContent = message));
-  room.onMessage("move", (movement) => {
-    if (room === connection) game.handleMove(movement, connection.state.phase);
-  });
-  room.onMessage("duel", (event) => {
-    if (room !== connection) return;
-    game.showDuelSpell(event);
-    // Play the spell when the shared animation starts (startTime is server time); no extra network traffic.
-    const delay = Number.isFinite(event?.startTime) ? event.startTime - serverNow() : 0;
-    setTimeout(() => room === connection && audio.play("spell"), Math.max(0, Math.min(delay, 2000)));
-  });
-  room.onLeave(() => {
-    if (room !== connection) return;
-    leaveCleanup();
-    enterMenu("Se ha perdido la conexión con la sala.").catch(() => goToLogin());
-  });
-  $("hud").style.display = "flex";
-
-  buildLobby(room);
-  room.onStateChange((state) => {
-    if (room === connection) onState(state);
-  });
   room.onMessage("move", (movement) => {
     if (room === connection) game.handleMove(movement, connection.state.phase);
   });
