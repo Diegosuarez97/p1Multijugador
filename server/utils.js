@@ -28,7 +28,9 @@ export function readTwoFactorChallenge(token) {
 }
 
 export function attachUser(req, res, next) {
-  const token = req.cookies.token;
+  // The game client lives on another origin, so it sends the JWT as a Bearer token.
+  const bearer = /^Bearer (.+)$/.exec(req.get("authorization") ?? "")?.[1];
+  const token = bearer || req.cookies.token;
   res.locals.user = null;
 
   if (token) {
@@ -39,7 +41,7 @@ export function attachUser(req, res, next) {
       req.user = payload;
       res.locals.user = payload;
     } catch (err) {
-      res.clearCookie("token"); // expired or invalid
+      if (!bearer) res.clearCookie("token"); // expired or invalid
     }
   }
   next();

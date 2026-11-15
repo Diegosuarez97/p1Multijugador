@@ -28,9 +28,14 @@ const State = schema({
 });
 
 export class GameRoom extends Room {
+  // Set by index.js to persist trophies; a no-op keeps tests away from the real database.
+  static onWin = () => {};
+
   maxClients = MAX_PLAYERS;
 
-  onCreate() {
+  onCreate(options) {
+    // Private rooms are only reachable with their code (joinById), never by quick match.
+    if (options?.private) this.setPrivate(true);
     this.setState(new State());
     this.state.phase = "lobby";
     this.state.maxMoveRange = MAX_MOVE_RANGE;
@@ -172,6 +177,14 @@ export class GameRoom extends Room {
     this.state.trophyAvailable = false;
     this.state.winnerId = sessionId;
     this.state.winnerName = winner.name;
+    const winnerUserId = this.clients.find((client) => client.sessionId === sessionId)?.auth?.id;
+    if (winnerUserId !== undefined) {
+      try {
+        GameRoom.onWin(winnerUserId);
+      } catch (error) {
+        console.error("Could not record the trophy:", error);
+      }
+    }
     for (const [destination, contest] of [...this.destinationClaims]) {
       this.cancelDestinationContest(destination, contest);
     }

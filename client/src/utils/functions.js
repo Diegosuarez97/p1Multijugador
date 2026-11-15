@@ -2,8 +2,16 @@ import { TH, TW } from "./constants.js";
 
 export const $ = (id) => document.getElementById(id);
 
+// Listeners run when the visible screen actually changes (used for the navigation sound).
+export const screenListeners = new Set();
+let currentScreen = null;
+
 export function show(id) {
   document.querySelectorAll(".screen").forEach((screen) => screen.classList.toggle("active", screen.id === id));
+  if (id === currentScreen) return;
+  const previous = currentScreen;
+  currentScreen = id;
+  screenListeners.forEach((listener) => listener(id, previous));
 }
 
 // ---------- isometric helpers ----------

@@ -5,6 +5,14 @@ import { auth } from "../utils.js";
 export function createPagesRouter({ render }) {
   const router = Router();
 
+  // When the game client URL is known, it is the single entry point: login, menu and profile live there.
+  // Browsers keep the #fragment across redirects, so reset links (/reset#reset-password=...) still work.
+  const clientUrl = process.env.CLIENT_URL?.replace(/\/+$/, "");
+  if (clientUrl) {
+    router.get(["/", "/login", "/register", "/profile", "/forgot", "/reset", "/delete"], (req, res) =>
+      res.redirect(`${clientUrl}/`));
+  }
+
   router.get("/", (req, res) => render(res, "home"));
   router.get("/login", (req, res) => render(res, "login"));
   router.get("/register", (req, res) => render(res, "register"));

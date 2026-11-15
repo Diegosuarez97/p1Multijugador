@@ -8,7 +8,7 @@ import { Server } from "colyseus";
 import { WebSocketTransport } from "@colyseus/ws-transport";
 import { Eta } from "eta";
 import { GameRoom } from "./GameRoom.js";
-import { getUser, passwordResetStore } from "./db/utils.js";
+import { addTrophy, getUser, passwordResetStore } from "./db/utils.js";
 import { createPasswordRecoveryRouter } from "./passwordRecovery.js";
 import { createTwoFactorRouter } from "./twoFactor.js";
 import { attachUser } from "./utils.js";
@@ -68,5 +68,6 @@ app.use((req, res) => {
 
 const server = http.createServer(app);
 const gameServer = new Server({ transport: new WebSocketTransport({ server }) });
+GameRoom.onWin = addTrophy;
 gameServer.define("game", GameRoom);
 gameServer.listen(PORT).then(() => console.log(`Server on :${PORT}`));
