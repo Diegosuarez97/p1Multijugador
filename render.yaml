@@ -22,6 +22,11 @@ services:
           type: web
           name: iso-client
           envVarKey: RENDER_EXTERNAL_URL
+      - key: CLIENT_URL
+        fromService:
+          type: web
+          name: iso-client
+          envVarKey: RENDER_EXTERNAL_URL
       - key: TRUST_PROXY_HOPS
         value: "1"
       - key: BREVO_API_KEY

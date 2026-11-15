@@ -27,6 +27,20 @@ export function createAccountRouter({ uploadsDir }) {
     },
   });
 
+  router.get("/me", auth, (req, res) => {
+    const user = getUser(req.user.username);
+    if (!user) return res.status(401).json({ error: "La sesión no es válida. Vuelve a iniciar sesión." });
+    res.json({
+      username: user.username,
+      email: user.email,
+      birthdate: user.birthdate,
+      nickname: user.nickname || "",
+      avatar: user.avatar,
+      totpEnabled: Boolean(user.totp_enabled),
+      trophies: user.trophies ?? 0,
+    });
+  });
+
   router.put("/profile", auth, upload.single("avatar"), async (req, res) => {
     const nickname = (req.body.nickname || "").trim();
     const user = getUser(req.user.username);

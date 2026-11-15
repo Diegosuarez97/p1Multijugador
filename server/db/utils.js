@@ -30,6 +30,10 @@ export function updateUserProfile(username, nickname, avatar) {
     `).run(nickname, avatar, username);
 }
 
+export function addTrophy(id) {
+    return db.prepare("UPDATE users SET trophies = trophies + 1 WHERE id = ?").run(id).changes;
+}
+
 export function updateUserPassword(username, hash) {
     return db.prepare("UPDATE users SET hash = ? WHERE username = ?").run(hash, username).changes;
 }
