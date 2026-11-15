@@ -1,3 +1,0 @@
-#!/bin/sh
-# Keep the dev database in every commit so deploys ship the same users.
-git add server/db/data.db

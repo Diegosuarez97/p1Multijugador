@@ -2,6 +2,21 @@
 
 > **Goal:** Update the LaTeX report at [`@informe/informe.tex`](informe/informe.tex) so it fully documents the project.
 
+Here's some info about the audio assets:
+
+```text
+Créditos de la música: al final de esa subsección, una frase y una tabla pequeña: «Els sons provenen de Pixabay i s’utilitzen sota la Pixabay Content License (ús gratuït, atribució no obligatòria)».
+
+Uso	Autor	Título
+Música menús	solarflex	Magic Fantasy Fairy Tale Music
+Música partida	leberch	Motions to Dark Mystery
+Hechizo	daviddumaisaudio	Magical Spell Cast
+Victoria	pw23check	Winning
+Navegación	yodguard	Wind Magic 2
+
+En cada uno, enlace a su página de Pixabay. Para encontrarla, busca en Pixabay el título del sonido
+```
+
 ---
 
 ## Modules

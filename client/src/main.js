@@ -1,4 +1,3 @@
-import { Client } from "colyseus.js";
 import { setupAuth } from "./auth.js";
 import { setupMenu } from "./menu.js";
 import { setupProfile } from "./profile.js";
@@ -6,20 +5,17 @@ import { setupSettings } from "./settings.js";
 import { audio } from "./audio.js";
 import { buildLobby, renderLobby } from "./lobby.js";
 import { createPlayerPings } from "./playerPings.js";
+import { joinGame } from "./game/connection.js";
 import { GameView } from "./game/GameView.js";
 import { fetchMe, getToken, logout, setToken } from "./session.js";
-import { HOST, MAX_MOVE_TILES } from "./utils/constants.js";
+import { MAX_MOVE_TILES } from "./utils/constants.js";
 import { $, screenListeners, show } from "./utils/functions.js";
 
 let room;
 let me;
-let pingInterval;
-let rtt = 0;
-let offset = 0;
-let samples = [];
 let lastPhase = "";
 
-const serverNow = () => Date.now() + offset;
+const serverNow = () => room?.serverNow() ?? Date.now();
 const moveRange = () => room?.state.players.get(room.sessionId)?.moveRange ?? MAX_MOVE_TILES;
 const playerPings = createPlayerPings(() => room);
 const game = new GameView({ getRoom: () => room, serverNow, moveRange });
@@ -107,60 +103,36 @@ $("back-menu").onclick = () => exitMatch(false);
 $("leave-lobby").onclick = () => exitMatch(false);
 
 function friendlyJoinError(error, mode) {
-  const text = String(error?.message ?? error);
-  if (/not found|no rooms found/i.test(text)) {
+  // The HTTP API answers { error } with the real reason.
+  const text = String(error?.response?.data?.error ?? error?.message ?? error);
+  if (/no existeix|not found|no rooms found/i.test(text)) {
     return mode === "join" ? "No existe ninguna sala con ese código." : "No se ha encontrado ninguna sala disponible.";
   }
-  if (/already started|locked/i.test(text)) return "Esa partida ya ha empezado o está llena.";
-  if (/already connected/i.test(text)) return "Ya estás conectado a esa sala desde otra pestaña.";
+  if (/already started|locked|full|liena/i.test(text)) return "Esa partida ya ha empezado o está llena.";
   if (/invalid token/i.test(text)) return "Tu sesión ha caducado. Vuelve a iniciar sesión.";
   return `No se ha podido entrar en la sala: ${text}`;
 }
 
-// mode: "quick" joins any open public room (or opens one), "create" opens a private room, "join" uses a code.
+// mode: "quick"/"create" join an open room (the server opens one), "join" uses a code.
 async function joinRoom(mode, code) {
   const token = getToken();
-  const client = new Client(HOST);
+  let connection;
   try {
-    if (mode === "join") room = await client.joinById(code, { token });
-    else if (mode === "create") room = await client.create("game", { token, private: true });
-    else room = await client.joinOrCreate("game", { token });
+    connection = await joinGame({ token, roomId: mode === "join" ? code : null });
   } catch (error) {
     const message = friendlyJoinError(error, mode);
-    if (/invalid token/i.test(String(error?.message))) goToLogin(message);
+    if (error?.response?.status === 401) goToLogin(message);
     throw new Error(message);
   }
+  room = connection;
 
   $("roomId").textContent = `Código de sala: ${room.roomId}`;
   $("copyRoomId").textContent = "Copiar código";
-  const connection = room;
-  samples = [];
-  rtt = 0;
-  offset = 0;
   lastPhase = "";
   settings.setInRoom(true);
   audio.setScene("game");
 
   room.onMessage("error", (message) => ($("lobbyInfo").textContent = message));
-  room.onMessage("pong", ({ clientTime, serverTime }) => {
-    if (room !== connection) return;
-    const now = Date.now();
-    samples.push({ rtt: now - clientTime, offset: serverTime + (now - clientTime) / 2 - now });
-    samples = samples.slice(-8);
-    rtt = Math.round(samples.reduce((sum, sample) => sum + sample.rtt, 0) / samples.length);
-    offset = samples.reduce((sum, sample) => sum + sample.offset, 0) / samples.length;
-    updateHud();
-    room.send("latency", rtt);
-  });
-  const ping = () => connection.send("ping", Date.now());
-  ping();
-  pingInterval = setInterval(ping, 2000);
-  $("hud").style.display = "flex";
-
-  buildLobby(room);
-  room.onStateChange((state) => {
-    if (room === connection) onState(state);
-  });
   room.onMessage("move", (movement) => {
     if (room === connection) game.handleMove(movement, connection.state.phase);
   });
@@ -176,6 +148,13 @@ async function joinRoom(mode, code) {
     leaveCleanup();
     enterMenu("Se ha perdido la conexión con la sala.").catch(() => goToLogin());
   });
+  $("hud").style.display = "flex";
+
+  buildLobby(room);
+  room.onStateChange((state) => {
+    if (room === connection) onState(state);
+  });
+  room.start();
   show("lobby");
 }
 
@@ -210,7 +189,6 @@ function leaveCleanup() {
   room = undefined;
   settings.setInRoom(false);
   audio.setScene("menu");
-  clearInterval(pingInterval);
   game.reset();
   playerPings.reset();
   $("hud").style.display = "none";
