@@ -21,9 +21,9 @@
         <a id="register" class="auth-tab" href="#" target="_blank" rel="noopener">Registrarse</a>
       </div>
       <form id="login-panel" class="auth-panel active">
-        <input id="user" aria-label="Usuario" placeholder="Usuario" autocomplete="username" required>
-        <input id="pass" aria-label="Contraseña" type="password" placeholder="Contraseña" autocomplete="current-password" required>
-        <input id="totp" aria-label="Código de verificación" placeholder="Código de 6 dígitos" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" hidden>
+        <input id="user" name="username" aria-label="Usuario" placeholder="Usuario" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        <input id="pass" name="password" aria-label="Contraseña" type="password" placeholder="Contraseña" autocomplete="current-password" required>
+        <input id="totp" name="totp" aria-label="Código de verificación" placeholder="Código de 6 dígitos" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" hidden>
         <button id="login-submit" class="auth-submit" type="submit">Iniciar sesión</button>
         <a id="forgot-password-link" class="text-button" href="#" target="_blank" rel="noopener">He olvidado mi contraseña</a>
       </form>

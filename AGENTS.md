@@ -1,11 +1,15 @@
 # AGENTS.md
 
-Isometric multiplayer game: PixiJS client + Express/Colyseus server. Two independent npm projects, no root `package.json`, no CI, no tests, lint, or typecheck.
+> ALWAYS use the ponytail skill.
+> NEVER push to git.
+> The code in @code-php (if it's present) is deprecated. It was only used for the migration of the project.
+
+Isometric multiplayer game: PixiJS client + Express/HTTP server. Two independent npm projects, no root `package.json`, no CI, no tests, lint, or typecheck.
 
 ## Layout
 
 - `client/` — Vite + PixiJS game client (dev port 5173). Entry: `client/src/main.js`, markup in `client/index.html`. Login, lobby and ping UI live in their own modules; PixiJS rendering is in `client/src/game/GameView.js`.
-- `server/` — Express + Colyseus + Eta server (port 2567). Entry: `server/index.js`, game logic in `server/GameRoom.js`, map/pathfinding and message handlers in `server/game/`, HTTP routes in `server/routes/`.
+- `server/` — Express + Eta server (port 2567). Entry: `server/index.js`, game logic in `server/GameRoom.js`, map/pathfinding and the in-memory room registry in `server/game/`, HTTP routes in `server/routes/` (game API in `server/routes/game.js`).
 - `server/` also serves a **separate** server-rendered site (home/login/register/profile) from `server/templates/*.eta` and `server/public/`. That is not the Vite game client; don't confuse the two.
 - `tiled/` — Tiled project copy of the map; the server only loads `client/public/assets/map.tmj`.
 - `.idea/` is tracked (WebStorm). Avoid committing incidental IDE changes.
@@ -37,9 +41,10 @@ cd client && npm install && npm run dev
 
 ## Architecture notes
 
-- Movement is server-authoritative: the client only sends `moveTo`; `GameRoom` validates bounds/collisions/occupied tiles, runs BFS, and broadcasts the path with `startTime`/`msPerTile` (300 ms). The client interpolates using a ping-derived clock offset. Don't add client-side movement prediction without changing both sides.
+- Movement is server-authoritative: the client only sends `moveTo`; `GameRoom` validates bounds/collisions/occupied tiles, runs BFS, and queues the path with `startTime`/`msPerTile` (300 ms) after the `CLICK_ARBITRATION_MS` window. The client interpolates using a ping-derived clock offset. It also starts the mover's own sprite locally (`GameView.predictMove`) and reconciles it with the server echo; that prediction is visual only, the server still decides movement, disputes and pickups.
+- No WebSockets: the game is a REST API. `POST /api/game/join` returns the room and session, `POST /api/game/:roomId/{team,move,leave}` are the actions, and `GET /api/game/:roomId?since=N` polls the snapshot plus the events after cursor `N` (client polls every ~100 ms). Closing the tab sends a `pagehide` beacon (`navigator.sendBeacon`, token in the form body) that leaves immediately; a player that stops polling for `PLAYER_TIMEOUT` (15 s) is dropped as a fallback for force-kills or network loss.
 - Phases are `lobby` → `playing`; the room locks after start and holds max 6 players. Each player must pick a team (1–6) before the game starts. `MIN_PLAYERS` is 1 in `GameRoom.js` even though the lobby text in `main.js` says "Needs 2+"; team IDs/colors are hardcoded in both files.
-- Auth: the Vite client only logs in (`/api/login`) and passes the JWT to `joinOrCreate("game", { token })`; registration, profile editing and password recovery/reset live on the server-rendered site (`/register`, `/profile`, `/forgot`, `/reset`). `GameRoom.onAuth` checks the token option first, then falls back to the `token` cookie. The server-rendered site uses the httpOnly cookie via `server/utils.js` (`attachUser`, `auth`).
+- Auth: the Vite client only logs in (`/api/login`) and sends the JWT as `Authorization: Bearer` to the game API; registration, profile editing and password recovery/reset live on the server-rendered site (`/register`, `/profile`, `/forgot`, `/reset`). Game routes verify that header, with a form-body `token` fallback only because the close-tab beacon cannot set headers (never the cookie). The server-rendered site uses the httpOnly cookie via `server/utils.js` (`attachUser`, `auth`).
 - `server/db/data.db` is tracked in git and baked into the deploy image (`DB_PATH=/app/server/db/data.db`), so production starts with the dev users and loses production registrations on redeploy. `.githooks/pre-commit` stages the DB on every commit; that requires `git config core.hooksPath .githooks`.
 - `/api/register` returns `{ token }` for JSON requests and redirects to `/login` for the HTML form.
 - Eta templates receive data as `DATA_*` keys through `render()` in `server/index.js`.
@@ -50,6 +55,3 @@ cd client && npm install && npm run dev
 - Layers must be named `ground` and `collision` (collision drives server blocking). The tmj tileset entry must be `{"firstgid":1,"source":"map_tiles.tsx"}`; tile art is external PNGs in `_tiles/`.
 - Map is 60×60: the server derives `GRID` from the tmj width, while `client/src/utils/constants.js` hardcodes `GRID = 60`. Keep them in sync when resizing.
 - Keep `tiled/map.tmx` and `client/public/assets/map.tmx` (plus `map_tiles.tsx`) in sync; they are duplicate copies today.
-
-> ALWAYS use the ponytail skill.
-> NEVER push to git.

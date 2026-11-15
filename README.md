@@ -1,4 +1,4 @@
-# Iso Game (PixiJS + Colyseus)
+# Iso Game (PixiJS + Express)
 
 ## Mapa del laberinto
 
@@ -27,15 +27,22 @@ con un alcance de tres casillas por clic y el HUD muestra el alcance actual y el
 máximo. El servidor controla movimiento,
 colisiones, disputas, recogidas y victoria.
 
+No hay WebSockets: el cliente usa la API HTTP del servidor. `POST /api/game/join`
+abre o recupera la sala, `POST /api/game/:roomId/{team,move,leave}` son las
+acciones y `GET /api/game/:roomId?since=N` devuelve el estado y los eventos
+posteriores a `N`; el cliente lo consulta cada 100 ms. Al cerrar la pestaña se
+envía un aviso de salida con `navigator.sendBeacon` y el jugador se elimina al
+instante; si el navegador muere sin avisar, se le expulsa tras 15 s sin consultar.
+
 El primer jugador que llega a la copa gana, también si la atraviesa en un recorrido.
 «Jugar otra partida» conserva la sesión y abre un lobby nuevo; los demás pueden
 unirse con el mismo botón. Cada sala restaura copa, mejoras y alcance inicial.
 La imagen de la copa está en `client/public/assets/trophy.png` y su prompt en
 `docs/trophy-prompt.txt`. La cámara conserva una escala de 0.6.
 
-Pruebas: `cd server` y `node --test tests/*.test.js` (las pruebas de red requieren
-también las dependencias del cliente). Verifican conectividad, anchura de los
-pasillos, salidas agrupadas, meta al fondo, disputas, recogidas y revancha.
+Pruebas: `cd server` y `node --test tests/*.test.js`. Verifican la conexión HTTP de
+las salas, anchura de los pasillos, salidas agrupadas, meta al fondo, disputas,
+recogidas y revancha.
 
 ![Esquema del laberinto y salida compartida](docs/maze-preview.png)
 
