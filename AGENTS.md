@@ -1,6 +1,6 @@
 # AGENTS.md
 
-> ALWAYS use the ponytail skill.
+> ALWAYS use the ponytail and caveman skill.
 > NEVER push to git.
 > The code in @code-php (if it's present) is deprecated. It was only used for the migration of the project.
 

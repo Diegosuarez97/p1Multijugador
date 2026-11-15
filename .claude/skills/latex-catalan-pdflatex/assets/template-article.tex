@@ -1,13 +1,12 @@
 % !TEX program = pdflatex
 % Plantilla base · pdfLaTeX · català
+% Estructura fixa: portada (pàg. 1) · índex (pàg. 2) · contingut (pàg. 3 en endavant)
 \documentclass[a4paper,11pt]{article}
 
 % --- Codificació i llengua (pdfLaTeX) -------------------------------
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[catalan]{babel}
-\usepackage{lmodern}
-\usepackage{microtype}
 
 % --- Pàgina ---------------------------------------------------------
 \usepackage[a4paper,margin=2.5cm]{geometry}
@@ -37,6 +36,15 @@
 \theoremstyle{remark}
 \newtheorem*{observacio}{Observació}
 
+% --- Tipus de lletra -------------------------------------------------
+% Càrrega: després d'amsmath i abans de microtype. Només un bloc actiu.
+% Alternatives (text + matemàtiques): vegeu references/fonts.md
+\usepackage{lmodern}                 % per defecte: Latin Modern
+%\usepackage{newpxtext,newpxmath}    % Palatino
+%\usepackage{newtxtext,newtxmath}    % Times
+%\usepackage{libertine}\usepackage[libertine]{newtxmath}  % Libertine
+\usepackage{microtype}
+
 % --- Figures, taules i enllaços -------------------------------------
 \usepackage{graphicx}
 \usepackage{booktabs}
@@ -46,18 +54,42 @@
 % \usepackage[backend=biber,style=numeric]{biblatex}
 % \addbibresource{referencies.bib}
 
+% --- Dades de la portada --------------------------------------------
 \title{Títol del document}
+\newcommand{\subtitol}{Subtítol opcional}   % deixeu-lo buit ({}) per ometre'l
+\newcommand{\institucio}{Nom de la institució} % idem
 \author{Nom Cognom}
 \date{\today}
 
+% --- Portada: ocupa sempre tota la pàgina 1, sense número ------------
+% Després de la portada, l'índex és la pàgina 2 (la numeració continua).
+\makeatletter
+\newcommand{\portada}{%
+  \begin{titlepage}
+    \centering
+    \vspace*{\fill}
+    \ifx\institucio\empty\else{\large\scshape\institucio\par}\vspace{2.5cm}\fi
+    {\Huge\bfseries\@title\par}
+    \ifx\subtitol\empty\else\vspace{0.8cm}{\Large\subtitol\par}\fi
+    \vspace{2cm}
+    {\Large\@author\par}
+    \vspace{0.6cm}
+    {\large\@date\par}
+    \vspace*{\fill}
+  \end{titlepage}%
+  \setcounter{page}{2}%
+}
+\makeatother
+
 \begin{document}
-\maketitle
+
+\portada              % pàgina 1: només la portada
+\tableofcontents      % pàgina 2: només l'índex
+\clearpage            % el contingut sempre comença en una pàgina nova
 
 \begin{abstract}
-Resum breu del contingut del document.
+Resum breu del contingut del document (opcional).
 \end{abstract}
-
-\tableofcontents
 
 \section{Introducció}
 \label{sec:introduccio}
