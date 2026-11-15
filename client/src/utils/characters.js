@@ -1,6 +1,8 @@
 import { AnimatedSprite, Texture } from "pixi.js";
 
-const FRAME_WIDTH = 88;
+// Wide enough for tails and capes in the side view; the sprite is anchored at its feet,
+// so the extra width does not move the character on the map.
+const FRAME_WIDTH = 108;
 const FRAME_HEIGHT = 128;
 const FIT_PADDING = 4;
 
@@ -43,22 +45,77 @@ function getOpaqueBounds(context, x, y, width, height) {
   return right < 0 ? null : { left, top, width: right - left + 1, height: bottom - top + 1 };
 }
 
-function makeFrameCanvas(image, sourceX, sourceY, sourceWidth, sourceHeight) {
+const ALPHA_MIN = 32; // fainter pixels are anti-aliasing noise
+const ATTACH_MARGIN = 6; // pieces this close to the body (wand, sparkles) belong to the character
+
+// The AI sheets are not cut on a perfect grid, so a cell can contain stray pixels from the
+// neighbouring frame. Keep the biggest connected blob (the character) plus anything touching
+// its box, and erase the rest so it neither shows up nor shrinks the frame.
+function removeStrayPixels(context, width, height) {
+  const imageData = context.getImageData(0, 0, width, height);
+  const pixels = imageData.data;
+  const label = new Int32Array(width * height).fill(-1);
+  const blobs = [];
+  const stack = [];
+  for (let start = 0; start < width * height; start++) {
+    if (label[start] !== -1 || pixels[start * 4 + 3] < ALPHA_MIN) continue;
+    const blob = { size: 0, left: width, top: height, right: -1, bottom: -1 };
+    const id = blobs.push(blob) - 1;
+    label[start] = id;
+    stack.push(start);
+    while (stack.length) {
+      const index = stack.pop();
+      const x = index % width;
+      const y = (index - x) / width;
+      blob.size++;
+      blob.left = Math.min(blob.left, x);
+      blob.right = Math.max(blob.right, x);
+      blob.top = Math.min(blob.top, y);
+      blob.bottom = Math.max(blob.bottom, y);
+      for (const next of [index - 1, index + 1, index - width, index + width]) {
+        if (next < 0 || next >= width * height || label[next] !== -1) continue;
+        if ((next === index - 1 && x === 0) || (next === index + 1 && x === width - 1)) continue;
+        if (pixels[next * 4 + 3] < ALPHA_MIN) continue;
+        label[next] = id;
+        stack.push(next);
+      }
+    }
+  }
+  if (blobs.length === 0) return null;
+
+  const main = blobs.reduce((best, blob) => (blob.size > best.size ? blob : best));
+  // Pieces of the neighbouring frame are cut by the cell edge, so they touch its left or right side.
+  const touchesSide = (blob) => blob.left === 0 || blob.right === width - 1;
+  const keep = blobs.map((blob) => blob === main || (
+    !touchesSide(blob)
+    && blob.right >= main.left - ATTACH_MARGIN && blob.left <= main.right + ATTACH_MARGIN
+    && blob.bottom >= main.top - ATTACH_MARGIN && blob.top <= main.bottom + ATTACH_MARGIN
+  ));
+  for (let index = 0; index < width * height; index++) {
+    const id = label[index];
+    if (id === -1 ? pixels[index * 4 + 3] > 0 : !keep[id]) pixels[index * 4 + 3] = 0;
+  }
+  context.putImageData(imageData, 0, 0);
+  return getOpaqueBounds(context, 0, 0, width, height);
+}
+
+// Step 1: cut one cell of the sheet and find the character inside it.
+function scanFrame(image, sourceX, sourceY, sourceWidth, sourceHeight) {
   const scan = document.createElement("canvas");
   scan.width = Math.ceil(sourceWidth);
   scan.height = Math.ceil(sourceHeight);
   const scanContext = scan.getContext("2d", { willReadFrequently: true });
   scanContext.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, scan.width, scan.height);
-  const bounds = getOpaqueBounds(scanContext, 0, 0, scan.width, scan.height);
+  return { scan, bounds: removeStrayPixels(scanContext, scan.width, scan.height) };
+}
 
+// Step 2: draw it with its animation's scale, centred and standing on the bottom edge.
+// Using one scale for every frame stops the sprite from growing and shrinking while it walks.
+function drawFrame({ scan, bounds }, scale) {
   const canvas = document.createElement("canvas");
   canvas.width = FRAME_WIDTH;
   canvas.height = FRAME_HEIGHT;
   if (bounds) {
-    const scale = Math.min(
-      (FRAME_WIDTH - FIT_PADDING * 2) / bounds.width,
-      (FRAME_HEIGHT - FIT_PADDING) / bounds.height,
-    );
     const width = bounds.width * scale;
     const height = bounds.height * scale;
     const context = canvas.getContext("2d");
@@ -69,11 +126,23 @@ function makeFrameCanvas(image, sourceX, sourceY, sourceWidth, sourceHeight) {
       (FRAME_WIDTH - width) / 2, FRAME_HEIGHT - height, width, height,
     );
   }
-  return canvas;
+  return Texture.from(canvas);
 }
 
-function makeFrame(image, sourceX, sourceY, sourceWidth, sourceHeight) {
-  return Texture.from(makeFrameCanvas(image, sourceX, sourceY, sourceWidth, sourceHeight));
+// The largest scale at which every frame of one animation still fits in the 88 x 128 box.
+// It is per row because the AI sheets draw each direction at a slightly different size;
+// per frame (the old approach) made the sprite pulse while walking.
+function rowScale(frames) {
+  let scale = Infinity;
+  for (const { bounds } of frames) {
+    if (!bounds) continue;
+    scale = Math.min(
+      scale,
+      (FRAME_WIDTH - FIT_PADDING * 2) / bounds.width,
+      (FRAME_HEIGHT - FIT_PADDING) / bounds.height,
+    );
+  }
+  return Number.isFinite(scale) ? scale : 1;
 }
 
 export async function loadCharacterAnimations() {
@@ -81,16 +150,20 @@ export async function loadCharacterAnimations() {
   await Promise.all(Object.entries(CHARACTERS).map(async ([name, sheet]) => {
     const image = await loadImage(sheet.file);
     const rowNames = ["profile", "back", "front"];
-    const rows = {};
-    sheet.rows.forEach(([top, bottom], rowIndex) => {
+    const scannedRows = sheet.rows.map(([top, bottom], rowIndex) => {
       const count = sheet.frames[rowIndex];
       const frames = [];
       for (let frame = 0; frame < count; frame++) {
         const left = Math.round(frame * image.width / count);
         const right = Math.round((frame + 1) * image.width / count);
-        frames.push(makeFrame(image, left, top, right - left, bottom - top + 1));
+        frames.push(scanFrame(image, left, top, right - left, bottom - top + 1));
       }
-      rows[rowNames[rowIndex]] = frames;
+      return frames;
+    });
+    const rows = {};
+    scannedRows.forEach((frames, rowIndex) => {
+      const scale = rowScale(frames);
+      rows[rowNames[rowIndex]] = frames.map((frame) => drawFrame(frame, scale));
     });
     animations[name] = rows;
   }));
