@@ -20,4 +20,9 @@ for (const [name, definition] of [["totp_secret", "TEXT"], ["totp_enabled", "BOO
   if (!userColumns.includes(name)) db.exec(`ALTER TABLE users ADD COLUMN ${name} ${definition}`);
 }
 
+// Only a fresh database gets the development accounts; a live one keeps its rows.
+if (db.prepare("SELECT COUNT(*) FROM users").pluck().get() === 0) {
+  db.exec(fs.readFileSync(new URL("./seed.sql", import.meta.url), "utf8"));
+}
+
 db.close();

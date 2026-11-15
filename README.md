@@ -214,7 +214,7 @@ docker compose up --build
 
 - Client: http://localhost:8080
 - Servidor: http://localhost:2567
-- SQLite: `server/db/data.db`, dins la imatge (viatja amb el codi)
+- SQLite: `/data/data.db`, dins del volum `iso-data`; si el fitxer no existeix, el servidor crea l'esquema i hi importa els usuaris de `server/db/seed.sql`
 - Avatars: volum `iso-data`, muntat a `/data` del servidor
 
 ## Desplegar a Render
@@ -226,9 +226,9 @@ docker compose up --build
 3. Comprova que `https://<servidor>.onrender.com/healthz` respon correctament.
 4. Quan fusionis a `main`, canvia el camp `branch` de `render.yaml` (o la configuració dels serveis a Render).
 
-Variables principals del servidor: `JWT_SECRET` (la genera Render), `COOKIE_SECURE=production`, `DB_PATH=/app/server/db/data.db`, `UPLOAD_DIR=/data/uploads`. El blueprint connecta `CLIENT_ORIGIN` i `SERVER_URL` entre els dos serveis.
+Variables principals del servidor: `JWT_SECRET` (la genera Render), `COOKIE_SECURE=production`, `DB_PATH=/data/data.db`, `UPLOAD_DIR=/data/uploads`. El blueprint connecta `CLIENT_ORIGIN` i `SERVER_URL` entre els dos serveis.
 
-> La base de dades es puja al repositori i s'inclou a la imatge, així que cada desplegament arrenca amb els usuaris de desenvolupament. Els comptes creats a producció es perden al desplegament següent. El hook `.githooks/pre-commit` afegeix `server/db/data.db` a cada commit; activa'l amb `git config core.hooksPath .githooks`.
+> La base de dades viu al disc persistent (`/data/data.db`), així que els comptes creats a producció sobreviuen als desplegaments. `server/db/seed.sql` només s'importa quan la taula `users` és buida (volum nou); deixa-hi els usuaris de desenvolupament en lloc de pujar el fitxer binari `data.db`.
 
 > El pla `free` del client s'atura per inactivitat. El servidor necessita el pla `starter` per poder tenir disc persistent.
 
