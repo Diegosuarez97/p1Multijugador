@@ -1,4 +1,3 @@
-import { Client } from "colyseus.js";
 import { setupAuth } from "./auth.js";
 import { setupMenu } from "./menu.js";
 import { setupProfile } from "./profile.js";
@@ -6,20 +5,17 @@ import { setupSettings } from "./settings.js";
 import { audio } from "./audio.js";
 import { buildLobby, renderLobby } from "./lobby.js";
 import { createPlayerPings } from "./playerPings.js";
+import { joinGame } from "./game/connection.js";
 import { GameView } from "./game/GameView.js";
 import { fetchMe, getToken, logout, setToken } from "./session.js";
-import { HOST, MAX_MOVE_TILES } from "./utils/constants.js";
+import { MAX_MOVE_TILES } from "./utils/constants.js";
 import { $, screenListeners, show } from "./utils/functions.js";
 
 let room;
 let me;
-let pingInterval;
-let rtt = 0;
-let offset = 0;
-let samples = [];
 let lastPhase = "";
 
-const serverNow = () => Date.now() + offset;
+const serverNow = () => room?.serverNow() ?? Date.now();
 const moveRange = () => room?.state.players.get(room.sessionId)?.moveRange ?? MAX_MOVE_TILES;
 const playerPings = createPlayerPings(() => room);
 const game = new GameView({ getRoom: () => room, serverNow, moveRange });
@@ -142,19 +138,21 @@ async function joinRoom(mode, code) {
   audio.setScene("game");
 
   room.onMessage("error", (message) => ($("lobbyInfo").textContent = message));
-  room.onMessage("pong", ({ clientTime, serverTime }) => {
-    if (room !== connection) return;
-    const now = Date.now();
-    samples.push({ rtt: now - clientTime, offset: serverTime + (now - clientTime) / 2 - now });
-    samples = samples.slice(-8);
-    rtt = Math.round(samples.reduce((sum, sample) => sum + sample.rtt, 0) / samples.length);
-    offset = samples.reduce((sum, sample) => sum + sample.offset, 0) / samples.length;
-    updateHud();
-    room.send("latency", rtt);
+  room.onMessage("move", (movement) => {
+    if (room === connection) game.handleMove(movement, connection.state.phase);
   });
-  const ping = () => connection.send("ping", Date.now());
-  ping();
-  pingInterval = setInterval(ping, 2000);
+  room.onMessage("duel", (event) => {
+    if (room !== connection) return;
+    game.showDuelSpell(event);
+    // Play the spell when the shared animation starts (startTime is server time); no extra network traffic.
+    const delay = Number.isFinite(event?.startTime) ? event.startTime - serverNow() : 0;
+    setTimeout(() => room === connection && audio.play("spell"), Math.max(0, Math.min(delay, 2000)));
+  });
+  room.onLeave(() => {
+    if (room !== connection) return;
+    leaveCleanup();
+    enterMenu("Se ha perdido la conexión con la sala.").catch(() => goToLogin());
+  });
   $("hud").style.display = "flex";
 
   buildLobby(room);
@@ -176,6 +174,13 @@ async function joinRoom(mode, code) {
     leaveCleanup();
     enterMenu("Se ha perdido la conexión con la sala.").catch(() => goToLogin());
   });
+  $("hud").style.display = "flex";
+
+  buildLobby(room);
+  room.onStateChange((state) => {
+    if (room === connection) onState(state);
+  });
+  room.start();
   show("lobby");
 }
 
@@ -210,7 +215,6 @@ function leaveCleanup() {
   room = undefined;
   settings.setInRoom(false);
   audio.setScene("menu");
-  clearInterval(pingInterval);
   game.reset();
   playerPings.reset();
   $("hud").style.display = "none";

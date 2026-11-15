@@ -1,4 +1,4 @@
-# Iso Game (PixiJS + Colyseus)
+# Iso Game (PixiJS + Express)
 
 ## Mapa del laberinto
 
@@ -27,15 +27,22 @@ con un alcance de tres casillas por clic y el HUD muestra el alcance actual y el
 máximo. El servidor controla movimiento,
 colisiones, disputas, recogidas y victoria.
 
+No hay WebSockets: el cliente usa la API HTTP del servidor. `POST /api/game/join`
+abre o recupera la sala, `POST /api/game/:roomId/{team,move,leave}` son las
+acciones y `GET /api/game/:roomId?since=N` devuelve el estado y los eventos
+posteriores a `N`; el cliente lo consulta cada 100 ms. Al cerrar la pestaña se
+envía un aviso de salida con `navigator.sendBeacon` y el jugador se elimina al
+instante; si el navegador muere sin avisar, se le expulsa tras 15 s sin consultar.
+
 El primer jugador que llega a la copa gana, también si la atraviesa en un recorrido.
 «Jugar otra partida» conserva la sesión y abre un lobby nuevo; los demás pueden
 unirse con el mismo botón. Cada sala restaura copa, mejoras y alcance inicial.
 La imagen de la copa está en `client/public/assets/trophy.png` y su prompt en
 `docs/trophy-prompt.txt`. La cámara conserva una escala de 0.6.
 
-Pruebas: `cd server` y `node --test tests/*.test.js` (las pruebas de red requieren
-también las dependencias del cliente). Verifican conectividad, anchura de los
-pasillos, salidas agrupadas, meta al fondo, disputas, recogidas y revancha.
+Pruebas: `cd server` y `node --test tests/*.test.js`. Verifican la conexión HTTP de
+las salas, anchura de los pasillos, salidas agrupadas, meta al fondo, disputas,
+recogidas y revancha.
 
 ![Esquema del laberinto y salida compartida](docs/maze-preview.png)
 
@@ -207,7 +214,7 @@ docker compose up --build
 
 - Client: http://localhost:8080
 - Servidor: http://localhost:2567
-- SQLite: `server/db/data.db`, dins la imatge (viatja amb el codi)
+- SQLite: `/data/data.db`, dins del volum `iso-data`; si el fitxer no existeix, el servidor crea l'esquema i hi importa els usuaris de `server/db/seed.sql`
 - Avatars: volum `iso-data`, muntat a `/data` del servidor
 
 ## Desplegar a Render
@@ -219,9 +226,9 @@ docker compose up --build
 3. Comprova que `https://<servidor>.onrender.com/healthz` respon correctament.
 4. Quan fusionis a `main`, canvia el camp `branch` de `render.yaml` (o la configuració dels serveis a Render).
 
-Variables principals del servidor: `JWT_SECRET` (la genera Render), `COOKIE_SECURE=production`, `DB_PATH=/app/server/db/data.db`, `UPLOAD_DIR=/data/uploads`. El blueprint connecta `CLIENT_ORIGIN` i `SERVER_URL` entre els dos serveis.
+Variables principals del servidor: `JWT_SECRET` (la genera Render), `COOKIE_SECURE=production`, `DB_PATH=/data/data.db`, `UPLOAD_DIR=/data/uploads`. El blueprint connecta `CLIENT_ORIGIN` i `SERVER_URL` entre els dos serveis.
 
-> La base de dades es puja al repositori i s'inclou a la imatge, així que cada desplegament arrenca amb els usuaris de desenvolupament. Els comptes creats a producció es perden al desplegament següent. El hook `.githooks/pre-commit` afegeix `server/db/data.db` a cada commit; activa'l amb `git config core.hooksPath .githooks`.
+> La base de dades viu al disc persistent (`/data/data.db`), així que els comptes creats a producció sobreviuen als desplegaments. `server/db/seed.sql` només s'importa quan la taula `users` és buida (volum nou); deixa-hi els usuaris de desenvolupament en lloc de pujar el fitxer binari `data.db`.
 
 > El pla `free` del client s'atura per inactivitat. El servidor necessita el pla `starter` per poder tenir disc persistent.
 

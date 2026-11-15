@@ -5,7 +5,7 @@ import jwt from "jsonwebtoken";
 import { generate } from "otplib";
 import { createTwoFactorRouter } from "../twoFactor.js";
 import { createToken, createTwoFactorChallenge, jwtSecret } from "../utils.js";
-import { GameRoom } from "../GameRoom.js";
+import { createGameRouter } from "../routes/game.js";
 
 async function fixture(t) {
   const rows = new Map();
@@ -104,11 +104,19 @@ test("login needs both a valid challenge and a valid code before issuing a sessi
   assert.equal((await f.post("login/2fa", { challenge, code: await generate({ secret }) })).status, 401);
 });
 
-test("a 2FA challenge cannot open a game room session", () => {
-  const room = { state: { phase: "lobby" }, clients: [] };
-  const challenge = createTwoFactorChallenge({ id: 1, username: "student" });
-  assert.throws(
-    () => GameRoom.prototype.onAuth.call(room, {}, { token: challenge }, { headers: {} }),
-    /Invalid token/,
-  );
+test("a 2FA challenge cannot open a game room session", async () => {
+  const app = express();
+  app.use("/api/game", createGameRouter());
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise((resolve) => server.once("listening", resolve));
+  try {
+    const challenge = createTwoFactorChallenge({ id: 1, username: "student" });
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/api/game/join`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${challenge}` },
+    });
+    assert.equal(response.status, 401);
+  } finally {
+    server.close();
+  }
 });
