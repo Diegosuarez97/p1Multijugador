@@ -1,0 +1,97 @@
+% !TEX program = pdflatex
+% Plantilla base · pdfLaTeX · català
+\documentclass[a4paper,11pt]{article}
+
+% --- Codificació i llengua (pdfLaTeX) -------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[catalan]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% --- Pàgina ---------------------------------------------------------
+\usepackage[a4paper,margin=2.5cm]{geometry}
+
+% --- Text, citacions i números --------------------------------------
+\usepackage{csquotes}     % \enquote{...}
+% csquotes no porta estil català: el definim (« » exteriors, “ ” interiors)
+\DeclareQuoteStyle{catalan}
+  {\guillemotleft}{\guillemotright}
+  {\textquotedblleft}{\textquotedblright}
+\usepackage{siunitx}      % números i unitats amb coma decimal
+\sisetup{output-decimal-marker={,}, group-separator={\,}}
+
+% --- Matemàtiques ---------------------------------------------------
+\usepackage{amsmath,amssymb,amsthm}
+\DeclareMathOperator{\tg}{tg}       % tangent (notació catalana)
+\DeclareMathOperator{\arctg}{arctg}
+
+\theoremstyle{plain}
+\newtheorem{teorema}{Teorema}
+\newtheorem{lema}[teorema]{Lema}
+\newtheorem{proposicio}[teorema]{Proposició}
+\newtheorem{corollari}[teorema]{Corol·lari}
+\theoremstyle{definition}
+\newtheorem{definicio}[teorema]{Definició}
+\newtheorem{exemple}[teorema]{Exemple}
+\theoremstyle{remark}
+\newtheorem*{observacio}{Observació}
+
+% --- Figures, taules i enllaços -------------------------------------
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}    % carregar-lo gairebé al final
+
+% --- Bibliografia (descomenteu si cal; requereix executar biber) ----
+% \usepackage[backend=biber,style=numeric]{biblatex}
+% \addbibresource{referencies.bib}
+
+\title{Títol del document}
+\author{Nom Cognom}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Resum breu del contingut del document.
+\end{abstract}
+
+\tableofcontents
+
+\section{Introducció}
+\label{sec:introduccio}
+
+Text d'exemple amb una citació: \enquote{això és una cita}. A la
+secció~\ref{sec:resultats} es presenten els resultats; el valor és
+\num{3,14} i la massa, \SI{2,5}{\kilo\gram}.
+
+\section{Resultats}
+\label{sec:resultats}
+
+\begin{teorema}\label{thm:principal}
+Per a tot $x\in\mathbb{R}$ es compleix $\sin^2 x + \cos^2 x = 1$.
+\end{teorema}
+\begin{proof}
+Conseqüència directa del teorema de Pitàgores.
+\end{proof}
+
+\begin{table}[ht]
+  \centering
+  \caption{Exemple de taula.}
+  \label{tab:exemple}
+  \begin{tabular}{lr}
+    \toprule
+    Concepte & Valor \\
+    \midrule
+    Primer   & \num{1,5} \\
+    Segon    & \num{2,0} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+La taula~\ref{tab:exemple} resumeix les dades.
+
+% \printbibliography
+
+\end{document}
