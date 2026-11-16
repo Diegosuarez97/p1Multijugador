@@ -181,11 +181,6 @@ no s'utilitza). Es desplega des de la branca `main`.
 Després de crear el *Blueprint*, cal posar a mà `BREVO_API_KEY` i `BREVO_SENDER_EMAIL`
 al servei del servidor. `/healthz` serveix per comprovar que el servidor respon.
 
-## Màquina virtual
-
-- **Usuari:** *multi*
-- **Contrasenya:** *patata1234*
-
 ## Crèdits
 
 Música i efectes de [Pixabay](https://pixabay.com/), sota la Pixabay Content License:
