@@ -13,7 +13,7 @@ export function createAccountRouter({ uploadsDir }) {
   const storage = multer.diskStorage({
     destination: (req, file, callback) => callback(null, uploadsDir),
     filename: (req, file, callback) => {
-      // Random name: avoids collisions and ignores the user-supplied filename.
+      // nombre aleatorio, no usamos el del archivo subido
       const extension = path.extname(file.originalname).toLowerCase();
       callback(null, randomUUID() + extension);
     },
@@ -45,7 +45,7 @@ export function createAccountRouter({ uploadsDir }) {
   });
 
   const uploadAvatar = upload.single("avatar");
-  // Multer reports rejected files here; answer JSON so the client can show the reason.
+  // errores de multer en JSON para mostrarlos en el cliente
   const avatarUpload = (req, res, next) => uploadAvatar(req, res, (error) => {
     if (!error) return next();
     const message = error.code === "LIMIT_FILE_SIZE"

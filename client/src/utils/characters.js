@@ -1,13 +1,11 @@
 import { AnimatedSprite, Texture } from "pixi.js";
 
-// Wide enough for tails and capes in the side view; the sprite is anchored at its feet,
-// so the extra width does not move the character on the map.
+// ancho para que quepan colas y capas (el sprite se ancla en los pies)
 const FRAME_WIDTH = 108;
 const FRAME_HEIGHT = 128;
 const FIT_PADDING = 4;
 
-// Each source sheet has three rows: profile, back, front. The row and frame
-// counts differ between sheets, so describe each sheet independently.
+// cada hoja tiene 3 filas (perfil, espalda, frente) y distinto número de frames
 const CHARACTERS = {
   Gryffindor: { file: "Gryffindor.png", frames: [7, 6, 6], rows: [[38, 148], [227, 335], [423, 530]] },
   Ravenclaw: { file: "Ravenclaw.png", frames: [6, 6, 6], rows: [[48, 161], [235, 343], [420, 530]] },
@@ -45,12 +43,11 @@ function getOpaqueBounds(context, x, y, width, height) {
   return right < 0 ? null : { left, top, width: right - left + 1, height: bottom - top + 1 };
 }
 
-const ALPHA_MIN = 32; // fainter pixels are anti-aliasing noise
-const ATTACH_MARGIN = 6; // pieces this close to the body (wand, sparkles) belong to the character
+const ALPHA_MIN = 32; // casi transparente = ruido
+const ATTACH_MARGIN = 6; // trozos así de cerca (varita, chispas) son del personaje
 
-// The AI sheets are not cut on a perfect grid, so a cell can contain stray pixels from the
-// neighbouring frame. Keep the biggest connected blob (the character) plus anything touching
-// its box, and erase the rest so it neither shows up nor shrinks the frame.
+// las hojas no están bien cortadas y se cuelan trozos del frame de al lado.
+// Nos quedamos con la mancha más grande (el personaje) y lo que la toca.
 function removeStrayPixels(context, width, height) {
   const imageData = context.getImageData(0, 0, width, height);
   const pixels = imageData.data;
@@ -84,7 +81,7 @@ function removeStrayPixels(context, width, height) {
   if (blobs.length === 0) return null;
 
   const main = blobs.reduce((best, blob) => (blob.size > best.size ? blob : best));
-  // Pieces of the neighbouring frame are cut by the cell edge, so they touch its left or right side.
+  // los trozos del vecino tocan el borde de la celda
   const touchesSide = (blob) => blob.left === 0 || blob.right === width - 1;
   const keep = blobs.map((blob) => blob === main || (
     !touchesSide(blob)
@@ -99,7 +96,7 @@ function removeStrayPixels(context, width, height) {
   return getOpaqueBounds(context, 0, 0, width, height);
 }
 
-// Step 1: cut one cell of the sheet and find the character inside it.
+// recorta una celda y busca el personaje
 function scanFrame(image, sourceX, sourceY, sourceWidth, sourceHeight) {
   const scan = document.createElement("canvas");
   scan.width = Math.ceil(sourceWidth);
@@ -109,8 +106,7 @@ function scanFrame(image, sourceX, sourceY, sourceWidth, sourceHeight) {
   return { scan, bounds: removeStrayPixels(scanContext, scan.width, scan.height) };
 }
 
-// Step 2: draw it with its animation's scale, centred and standing on the bottom edge.
-// Using one scale for every frame stops the sprite from growing and shrinking while it walks.
+// lo dibuja centrado y apoyado abajo, con la escala de su animación
 function drawFrame({ scan, bounds }, scale) {
   const canvas = document.createElement("canvas");
   canvas.width = FRAME_WIDTH;
@@ -129,9 +125,7 @@ function drawFrame({ scan, bounds }, scale) {
   return Texture.from(canvas);
 }
 
-// The largest scale at which every frame of one animation still fits in the 88 x 128 box.
-// It is per row because the AI sheets draw each direction at a slightly different size;
-// per frame (the old approach) made the sprite pulse while walking.
+// misma escala para toda la fila, así el sprite no cambia de tamaño al andar
 function rowScale(frames) {
   let scale = Infinity;
   for (const { bounds } of frames) {
@@ -195,7 +189,7 @@ export function setCharacterWalking(sprite, dx, dy, walking) {
     return;
   }
 
-  // Grid X uses the profile view; grid Y uses the front/back views.
+  // eje X: vista de perfil; eje Y: frente/espalda
   const direction = dx !== 0 ? "profile" : dy > 0 ? "front" : "back";
   const scaleX = direction === "profile" && dx < 0 ? -1 : 1;
   sprite.scale.x = scaleX;

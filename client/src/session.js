@@ -1,7 +1,7 @@
 import axios from "axios";
 import { API, BASE } from "./utils/constants.js";
 
-// The JWT survives a page reload (sessionStorage) but not closing the tab.
+// el token va en sessionStorage: aguanta recargas, pero no cerrar la pestaña
 const KEY = "torneo-token";
 
 function read() {
@@ -20,7 +20,7 @@ export function setToken(value) {
   } catch { /* private mode: the session simply won't survive a reload */ }
 }
 
-// The server lives on another origin, so the token goes in the Authorization header.
+// el servidor está en otro dominio, así que el token va en la cabecera
 export const api = axios.create({ baseURL: API, withCredentials: true });
 api.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -29,13 +29,13 @@ api.interceptors.request.use((config) => {
 
 export function errorMessage(error, fallback) {
   if (error.response?.data?.error) return error.response.data.error;
-  // No response at all: server down, wrong URL or blocked by CORS.
+  // sin respuesta: servidor caído, URL mal o CORS
   if (!error.response) return "No se puede conectar con el servidor. Comprueba que está en marcha e inténtalo de nuevo.";
   if (error.response.status === 429) return "Demasiados intentos. Espera unos minutos.";
   return `${fallback || "Algo ha fallado."} (código ${error.response.status})`;
 }
 
-// Server-relative paths such as /uploads/x.png or /icons/default.svg.
+// rutas del servidor como /uploads/x.png
 export const assetUrl = (path) => (path ? new URL(path, `${BASE}/`).href : `${BASE}/icons/default.svg`);
 
 export async function fetchMe() {

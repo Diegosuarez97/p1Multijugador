@@ -1,7 +1,7 @@
-// Music and sound effects. Everything is local to this browser: nothing goes over the network.
+// música y efectos (todo local, no usa la red)
 const KEY = "torneo-audio";
 const DEFAULTS = { music: 0.4, effects: 0.7, muted: false, musicOn: true };
-const FADE_STEP = 0.04; // volume change every 50 ms, roughly half a second for a full crossfade
+const FADE_STEP = 0.04; // unos 0,5 s de fundido
 
 function load() {
   try {
@@ -14,21 +14,21 @@ function load() {
 function track(src) {
   const audio = new Audio(src);
   audio.loop = true;
-  audio.preload = "none"; // several MB: only downloaded once it actually plays
+  audio.preload = "none"; // pesan varios MB, se cargan al reproducirse
   audio.volume = 0;
   return audio;
 }
 
 const settings = load();
 const listeners = new Set();
-// Menus get the fairy-tale theme; rooms and matches the darker one.
+// menús: tema de fantasía; sala y partida: el más oscuro
 const tracks = { menu: track("/assets/audio/menu.mp3"), game: track("/assets/audio/game.mp3") };
 const effects = {
   spell: new Audio("/assets/audio/spell.mp3"),
   win: new Audio("/assets/audio/win.mp3"),
   click: new Audio("/assets/audio/click.mp3"),
 };
-const EFFECT_GAIN = { click: 0.6 }; // the button sound sits a bit under spells and the win jingle
+const EFFECT_GAIN = { click: 0.6 }; // el de navegación, algo más bajo
 
 let scene = "menu";
 let ducked = false;
@@ -43,7 +43,7 @@ function save() {
   try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch { /* not persisted */ }
 }
 
-// Browsers only allow audio after a user gesture, so the first attempt may be blocked.
+// el navegador no deja sonar nada hasta el primer clic
 function tryPlay(audio) {
   audio.play().catch(() => {
     if (waitingForGesture) return;
@@ -59,7 +59,7 @@ function tryPlay(audio) {
   });
 }
 
-// Moves every track towards its target volume; silent tracks are paused (keeping their position).
+// fundido entre pistas; la que se queda en silencio se pausa
 function fade() {
   clearInterval(fadeTimer);
   const step = () => {
@@ -101,31 +101,31 @@ export const audio = {
     listener({ ...settings });
   },
 
-  // Called once at boot; the music really starts with the first click or key press.
+  // la música empieza con el primer clic o tecla
   start() {
     started = true;
     fade();
   },
 
-  // "menu" or "game": crossfades to that scene's theme.
+  // "menu" o "game"
   setScene(name) {
     if (scene === name) return;
     scene = name;
-    if (name === "game") tracks.game.currentTime = 0; // every match starts its theme from the top
+    if (name === "game") tracks.game.currentTime = 0; // la de partida empieza desde el principio
     fade();
   },
 
   play(name) {
     if (settings.muted || settings.effects <= 0) return;
-    // A fresh clone lets several spells overlap.
+    // clonamos para que se puedan solapar
     const sound = effects[name].cloneNode();
     sound.volume = settings.effects * (EFFECT_GAIN[name] ?? 1);
     sound.play().catch(() => {});
-    // click.mp3 is 8 s long but only the first second is audible.
+    // click.mp3 dura 8 s pero solo suena el primero
     if (name === "click") setTimeout(() => sound.pause(), 1200);
   },
 
-  // Lower the music while the victory jingle plays, then bring it back.
+  // baja la música mientras suena la victoria
   duckFor(ms) {
     ducked = true;
     fade();

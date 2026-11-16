@@ -3,17 +3,17 @@ import { BLOCKED, BOOSTS, SPAWNS, TROPHY, findPath, GRID, isBlocked } from "./ga
 const MS_PER_TILE = 300;
 const INITIAL_MOVE_RANGE = 3;
 const MAX_MOVE_RANGE = 7;
-const MIN_PLAYERS = process.env.COOKIE_SECURE === "production" ? 2 : 1; // for testing, allow single-player start
+const MIN_PLAYERS = process.env.COOKIE_SECURE === "production" ? 2 : 1; // en local se puede probar solo
 const MAX_PLAYERS = Number(process.env.MAX_PLAYERS ?? 6);
 const LOSS_BACKTRACK_RATIO = 0.3;
-// Kept small so clicks feel immediate; the RTT term below covers slower networks.
+// margen para decidir quién hizo clic antes (se amplía con el ping)
 export const CLICK_ARBITRATION_MS = 100;
-// HTTP polling cannot see a closed tab, so a player that stops polling is dropped after this long.
+// si un jugador deja de consultar durante 15 s, se le echa
 const PLAYER_TIMEOUT = 15000;
 const MAX_EVENTS = 200;
 
 export class GameRoom {
-  static onWin = () => {}; // index.js replaces it with addTrophy; tests keep the no-op
+  static onWin = () => {}; // index.js lo cambia por addTrophy
 
   constructor(roomId, { maxPlayers = MAX_PLAYERS, clock } = {}) {
     this.roomId = roomId;
@@ -75,7 +75,7 @@ export class GameRoom {
       }
     }
     this.sessions.delete(id);
-    this.state.players.delete(id); // frees the team automatically
+    this.state.players.delete(id);
     this.checkStart();
   }
 
@@ -108,7 +108,7 @@ export class GameRoom {
         ...rest,
         players: Object.fromEntries(players),
         boosts: Object.fromEntries(boosts),
-        ...(since === 0 ? { blocked } : {}), // the collision grid is only needed once
+        ...(since === 0 ? { blocked } : {}), // los muros solo se mandan la primera vez
       },
       events: session.events,
       cursor: this.eventSequence,
@@ -140,7 +140,7 @@ export class GameRoom {
     if (this.state.phase !== "playing") return;
     const id = String(playerId);
     const player = this.state.players.get(id);
-    if (!player || player.moving) return; // committed walk: can't be interrupted
+    if (!player || player.moving) return; // no se puede cambiar el destino a medio camino
     const { x, y } = message ?? {};
     if (!Number.isInteger(x) || !Number.isInteger(y)) return;
     if (x < 0 || y < 0 || x >= GRID || y >= GRID || isBlocked(x, y)) return;
@@ -151,7 +151,7 @@ export class GameRoom {
     const destination = `${x},${y}`;
     const now = Date.now();
     const reportedClickTime = message?.clickedAt;
-    // Use the client's ping-synchronized estimate, but reject implausibly old/future values.
+    // usamos la hora del clic que manda el cliente, si es razonable
     const clickedAt = Number.isFinite(reportedClickTime)
       && reportedClickTime >= now - 5000 && reportedClickTime <= now + 100
       ? reportedClickTime
@@ -168,8 +168,7 @@ export class GameRoom {
 
     let contest = this.destinationClaims.get(destination);
     if (contest?.status === "active") {
-      // A later click can still approach the contested cell while its winner is walking.
-      // The short arbitration window has already passed, so it joins as a losing contender.
+      // si la disputa ya se resolvió, este clic llega tarde y pierde
       if (clickedAt < contest.winner.clickedAt) {
         return this.send(id, "error", { message: "La disputa por esta casilla ya está resuelta" });
       }
@@ -214,7 +213,7 @@ export class GameRoom {
       if (candidate === contest.winner) {
         candidate.player.moving = true;
       } else {
-        // Losers walk as far as the tile before the contested destination.
+        // los que pierden se paran una casilla antes
         candidate.path = candidate.path.slice(0, -1);
         if (candidate.path.length === 0) candidate.path = [{ x: candidate.player.x, y: candidate.player.y }];
         candidate.player.moving = true;
@@ -223,8 +222,7 @@ export class GameRoom {
 
     const winner = contest.winner;
     const duration = (winner.path.length - 1) * MS_PER_TILE;
-    // Resolve the contest before the winner's arrival callbacks (including the trophy pickup)
-    // so every client can show the same impact before any round-ending state change.
+    // primero se resuelve el duelo y después la llegada (y la copa)
     contest.timer = this.clock.setTimeout(
       () => this.finishDestinationContest(destination, contest),
       duration,
@@ -268,7 +266,6 @@ export class GameRoom {
     this.state.trophyAvailable = false;
     this.state.winnerId = String(playerId);
     this.state.winnerName = player.name;
-    // HTTP sessions are keyed by user id, so the winner id is the user id.
     try {
       GameRoom.onWin(String(playerId));
     } catch (error) {

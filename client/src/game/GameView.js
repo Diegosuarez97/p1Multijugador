@@ -54,9 +54,9 @@ export class GameView {
     if (id === this.getRoom().sessionId) this.clearPathPreview();
     const predicted = this.prediction;
     if (predicted?.id === id) {
-      // The echo of our own click: keep the local timing so the sprite does not jump back.
+      // es nuestro propio clic: seguimos con el tiempo local para que no salte
       if (sameTiles(path, predicted.path)) return;
-      // A contested destination trims the path; keep walking the shared prefix on local timing.
+      // hubo disputa y el camino se recorta: seguimos por el trozo común
       if (sameTiles(path, predicted.path.slice(0, path.length))) {
         predicted.path = path;
         this.anims[id].path = path;
@@ -228,7 +228,7 @@ export class GameView {
       if (path && path.length >= 2 && path.length - 1 <= this.moveRange()) {
         const clickedAt = this.serverNow();
         currentRoom.send("moveTo", { x, y, clickedAt });
-        // Start walking now; the server echo only confirms and the state catches up on arrival.
+        // empezamos a andar ya; el servidor lo confirma después
         this.predictMove(currentRoom.sessionId, path, clickedAt);
       }
       this.clearPathPreview();
@@ -289,7 +289,7 @@ export class GameView {
         setCharacterWalking(sprite.character, 0, 0, false);
         delete this.anims[id];
         this.duelBacktracks.delete(id);
-        // Wait for the authoritative arrival instead of snapping back to a lagging snapshot.
+        // esperamos a que el servidor confirme la llegada en vez de volver atrás
         if (this.prediction?.id === id) {
           this.holding.add(id);
           this.prediction = null;

@@ -1,7 +1,7 @@
 import { assetUrl } from "./session.js";
 import { $ } from "./utils/functions.js";
 
-// Main menu: quick match, private rooms, profile and logout.
+// menú principal
 export function setupMenu({ onQuickPlay, onCreateRoom, onJoinRoom, onProfile, onLogout }) {
   const msg = (text = "") => ($("home-msg").textContent = text);
   const buttons = ["quick-play", "create-room", "join-toggle", "open-profile", "logout"];

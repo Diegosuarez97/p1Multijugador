@@ -23,7 +23,7 @@ const uploadsDir = process.env.UPLOAD_DIR
 await mkdir(uploadsDir, { recursive: true });
 
 const app = express();
-// Set only for a known reverse-proxy topology, never trust forwarded headers blindly.
+// número de proxies por delante (1 en Render)
 const proxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
 if (!Number.isInteger(proxyHops) || proxyHops < 0 || proxyHops > 5) {
   throw new Error("TRUST_PROXY_HOPS must be an integer between 0 and 5");

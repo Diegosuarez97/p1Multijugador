@@ -18,7 +18,7 @@ function ageFrom(value) {
 const PANELS =["login-panel", "register-panel", "forgot-panel", "reset-panel"];
 
 export function setupAuth(onAuthenticated) {
-  // Set by the password step; it only proves the password was correct.
+  // token temporal del 2FA (solo prueba que la contraseña era buena)
   let pendingTwoFactor = null;
   let resetToken = "";
   const msg = (text = "", ok = false) => {
@@ -42,7 +42,7 @@ export function setupAuth(onAuthenticated) {
 
   document.querySelectorAll("[data-panel]").forEach((button) => {
     button.onclick = () => {
-      audio.play("click"); // switching to register/forgot counts as going to another page
+      audio.play("click");
       showPanel(button.dataset.panel);
     };
   });
@@ -157,11 +157,11 @@ export function setupAuth(onAuthenticated) {
     }
   });
 
-  // Reset links from the recovery email arrive as #reset-password=<token>.
+  // los enlaces del correo llegan como #reset-password=<token>
   function consumeResetLink() {
     const token = new URLSearchParams(location.hash.slice(1)).get("reset-password");
     if (!token) return false;
-    history.replaceState(null, "", location.pathname + location.search); // keep it out of history
+    history.replaceState(null, "", location.pathname + location.search); // lo quitamos de la barra
     if (!/^[a-f0-9]{64}$/.test(token)) {
       showPanel("forgot-panel");
       msg("El enlace no es válido o ha caducado. Solicita uno nuevo.");

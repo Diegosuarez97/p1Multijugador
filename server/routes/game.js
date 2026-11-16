@@ -12,7 +12,7 @@ export function createGameRouter() {
 
   router.use((req, res, next) => {
     const header = req.get("authorization") ?? "";
-    // The close-tab beacon cannot send headers, so it posts the token in the body.
+    // sendBeacon no puede mandar cabeceras, así que el token va en el body
     const token = header.startsWith("Bearer ")
       ? header.slice(7)
       : (typeof req.body?.token === "string" ? req.body.token : "");

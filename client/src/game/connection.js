@@ -10,7 +10,7 @@ const toState = (snapshot) => ({
   boosts: new Map(Object.entries(snapshot.boosts ?? {})),
 });
 
-// The game is plain HTTP: every action is a POST and the room state is polled.
+// todo por HTTP: las acciones son POST y el estado se consulta cada 100 ms
 export async function joinGame({ token, roomId }) {
   const headers = { Authorization: `Bearer ${token}` };
   const { data } = await axios.post(`${API}/game/join`, { roomId: roomId || null }, { headers });
@@ -43,7 +43,6 @@ export async function joinGame({ token, roomId }) {
     send(type, payload) {
       const path = type === "selectTeam" ? "team" : type === "moveTo" ? "move" : null;
       if (!path) return;
-      // The lobby sends the team as a bare number; the API expects { team }.
       const body = type === "selectTeam" ? { team: payload } : payload;
       axios.post(`${API}/game/${connection.roomId}/${path}`, body, { headers })
         .catch((error) => handleFailure(error));
@@ -60,17 +59,16 @@ export async function joinGame({ token, roomId }) {
     window.removeEventListener("pagehide", leaveOnPageHide);
   }
 
-  // Closing the tab/app fires pagehide; sendBeacon survives the page going away.
-  // The token travels in the form body because beacons cannot set headers.
+  // al cerrar la pestaña avisamos con sendBeacon (el token va en el body)
   function leaveOnPageHide(event) {
-    if (event.persisted || stopped) return; // bfcache: the page may come back
+    if (event.persisted || stopped) return; // bfcache: la página puede volver
     stop();
     navigator.sendBeacon?.(`${API}/game/${connection.roomId}/leave`, new URLSearchParams({ token }));
   }
 
   window.addEventListener("pagehide", leaveOnPageHide);
 
-  // The server no longer accepts us: expired token, swept player or deleted room.
+  // el servidor ya no nos acepta (token caducado, expulsado o sala borrada)
   function handleFailure(error) {
     const status = error.response?.status;
     if (![401, 404, 410].includes(status)) return;
@@ -83,7 +81,7 @@ export async function joinGame({ token, roomId }) {
     try {
       await axios.post(`${API}/game/${connection.roomId}/leave`, {}, { headers });
     } catch {
-      // Already out of the room; nothing to release.
+      // ya estábamos fuera
     }
   }
 
@@ -98,7 +96,7 @@ export async function joinGame({ token, roomId }) {
       const receivedAt = Date.now();
       const roundTrip = receivedAt - sentAt;
       samples = [...samples, { rtt: roundTrip, offset: data.serverTime + roundTrip / 2 - receivedAt }].slice(-SAMPLES);
-      // The fastest reply carries the least clock error, so it drives the offset (no animation jitter).
+      // la respuesta más rápida es la que mejor estima el reloj
       offset = samples.reduce((best, sample) => (sample.rtt < best.rtt ? sample : best)).offset;
       rtt = Math.round(samples.reduce((sum, sample) => sum + sample.rtt, 0) / samples.length);
 

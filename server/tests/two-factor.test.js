@@ -89,7 +89,7 @@ test("login needs both a valid challenge and a valid code before issuing a sessi
 
   assert.equal((await f.post("login/2fa", { challenge, code: "000000" })).status, 400);
   assert.equal((await f.post("login/2fa", { challenge: "garbage", code: await generate({ secret }) })).status, 401);
-  // A real session token (and any other token) is not a challenge.
+  // un token de sesión normal no vale como challenge
   const session = createToken({ id: 1, username: "student" });
   assert.equal((await f.post("login/2fa", { challenge: session, code: await generate({ secret }) })).status, 401);
 
@@ -99,7 +99,7 @@ test("login needs both a valid challenge and a valid code before issuing a sessi
   assert.equal(payload.username, "student");
   assert.equal(payload.scope, undefined);
 
-  // Turning 2FA off invalidates challenges that are still in flight.
+  // al desactivar el 2FA, los challenges pendientes dejan de valer
   await f.post("2fa/disable", { code: await generate({ secret }) });
   assert.equal((await f.post("login/2fa", { challenge, code: await generate({ secret }) })).status, 401);
 });

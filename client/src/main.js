@@ -69,7 +69,7 @@ async function enterMenu(message = "") {
   show("home");
 }
 
-// Restore the session after a reload; reset links take priority over everything else.
+// al recargar se mantiene la sesión; el enlace de reset va primero
 async function boot() {
   if (auth.consumeResetLink()) return show("auth");
   if (!getToken()) return goToLogin();
@@ -79,8 +79,7 @@ async function boot() {
     goToLogin("Tu sesión ha caducado. Vuelve a iniciar sesión.");
   }
 }
-// The magic "whoosh" only plays when a button takes you somewhere (menu, profile, room, back...).
-// Not on the first screen, nor on match start/results, which have their own sounds.
+// sonido al cambiar de pantalla (no al empezar ni al acabar la partida)
 const NAVIGATION_SCREENS = new Set(["auth", "home", "profile", "lobby"]);
 screenListeners.add((id, previous) => {
   if (previous && NAVIGATION_SCREENS.has(id)) audio.play("click");
@@ -103,7 +102,7 @@ $("back-menu").onclick = () => exitMatch(false);
 $("leave-lobby").onclick = () => exitMatch(false);
 
 function friendlyJoinError(error, mode) {
-  // The HTTP API answers { error } with the real reason.
+  // el servidor ya manda el motivo en { error }
   const text = String(error?.response?.data?.error ?? error?.message ?? error);
   if (/no existeix|not found|no rooms found/i.test(text)) {
     return mode === "join" ? "No existe ninguna sala con ese código." : "No se ha encontrado ninguna sala disponible.";
@@ -113,7 +112,7 @@ function friendlyJoinError(error, mode) {
   return `No se ha podido entrar en la sala: ${text}`;
 }
 
-// mode: "quick"/"create" join an open room (the server opens one), "join" uses a code.
+// "quick" y "create" abren una sala nueva; "join" entra con código
 async function joinRoom(mode, code) {
   const token = getToken();
   let connection;
@@ -139,7 +138,7 @@ async function joinRoom(mode, code) {
   room.onMessage("duel", (event) => {
     if (room !== connection) return;
     game.showDuelSpell(event);
-    // Play the spell when the shared animation starts (startTime is server time); no extra network traffic.
+    // el hechizo suena cuando empieza la animación (startTime es hora del servidor)
     const delay = Number.isFinite(event?.startTime) ? event.startTime - serverNow() : 0;
     setTimeout(() => room === connection && audio.play("spell"), Math.max(0, Math.min(delay, 2000)));
   });

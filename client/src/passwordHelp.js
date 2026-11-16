@@ -18,7 +18,6 @@ function hasSimplePattern(password) {
   });
 }
 
-// Pure check, exported so it can be tested without the DOM.
 export function evaluatePassword(password, personal = []) {
   const length = [...password].length;
   const lower = password.toLowerCase();
@@ -44,10 +43,8 @@ const LEVELS = {
   strong: { text: "Fuerte", width: 100 },
 };
 
-/**
- * Live guidance under a password field: strength bar, character count, tips and a match line.
- * getPersonal returns values the password should not contain (username, email...).
- */
+// barra de seguridad y consejos bajo el campo de contraseña.
+// getPersonal: datos que no puede contener (usuario, correo)
 export function attachPasswordHelp({ input, confirm, container, getPersonal = () => [] }) {
   const box = $(container);
   box.className = "pw-help";
@@ -87,7 +84,7 @@ export function attachPasswordHelp({ input, confirm, container, getPersonal = ()
 
   return {
     update,
-    // Returns a reason the form should not be sent, or "" if it can go to the server.
+    // devuelve el motivo para no enviar el formulario, o ""
     problem() {
       const result = update();
       if (!result.checks.length) return `La contraseña debe tener al menos ${MIN_PASSWORD} caracteres (ahora tiene ${result.length}).`;

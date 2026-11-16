@@ -1,7 +1,7 @@
 import { audio } from "./audio.js";
 import { $ } from "./utils/functions.js";
 
-// Music toggle and settings, available on every screen. Opening them never pauses the room.
+// botón de música y panel de ajustes (no pausa la partida)
 export function setupSettings({ onLeave }) {
   let confirming = false;
   let inRoom = false;
@@ -33,10 +33,10 @@ export function setupSettings({ onLeave }) {
 
   $("music-volume").oninput = () => audio.set({ music: $("music-volume").value / 100 });
   $("effects-volume").oninput = () => audio.set({ effects: $("effects-volume").value / 100 });
-  $("effects-volume").onchange = () => audio.play("spell"); // preview the new level
+  $("effects-volume").onchange = () => audio.play("spell"); // para oír el nuevo volumen
   $("mute-all").onchange = () => audio.set({ muted: $("mute-all").checked });
   $("music-on").onchange = () => audio.set({ musicOn: $("music-on").checked });
-  // The quick button also undoes "Silenciar todo", otherwise it would look broken.
+  // si estaba todo silenciado, el botón también lo quita
   $("music-toggle").onclick = () => {
     const { musicOn, muted } = audio.settings();
     const playing = musicOn && !muted;
@@ -57,7 +57,7 @@ export function setupSettings({ onLeave }) {
 
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
-    // In menus Esc only closes the panel; inside a room it also opens it.
+    // en los menús Esc solo cierra; en la sala también abre
     if (!inRoom && $("settings-panel").hidden) return;
     event.preventDefault();
     setOpen($("settings-panel").hidden);
@@ -66,7 +66,7 @@ export function setupSettings({ onLeave }) {
   audio.onChange(render);
 
   return {
-    // Inside a room (lobby, match, results) the panel offers going back to the main menu.
+    // dentro de una sala se puede volver al menú
     setInRoom(value) {
       inRoom = value;
       $("settings-leave").hidden = !value;
